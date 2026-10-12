@@ -11,6 +11,10 @@ builder.Services.AddDbContext<baitaplontmdtwebdatdoan.Data.FoodieDbContext>(opti
 builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();   // MỚI
 
+// Thông tin tài khoản nhận tiền để sinh mã VietQR (mục "Bank" trong appsettings.json)
+builder.Services.Configure<baitaplontmdtwebdatdoan.Models.BankSettings>(
+    builder.Configuration.GetSection("Bank"));
+
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using baitaplontmdtwebdatdoan.Data;
 using baitaplontmdtwebdatdoan.Models;
@@ -14,11 +15,13 @@ namespace baitaplontmdtwebdatdoan.Controllers
     {
         private readonly FoodieDbContext _context;
         private readonly IHubContext<OrderHub> _hub;
+        private readonly BankSettings _bank;
 
-        public OrderController(FoodieDbContext context, IHubContext<OrderHub> hub)
+        public OrderController(FoodieDbContext context, IHubContext<OrderHub> hub, IOptions<BankSettings> bank)
         {
             _context = context;
             _hub = hub;
+            _bank = bank.Value;
         }
 
         private long CurrentUserId => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -346,6 +349,10 @@ namespace baitaplontmdtwebdatdoan.Controllers
             ViewBag.RestaurantLng = order.Restaurant?.Longitude ?? 106.7009m;
             ViewBag.DeliveryLat = order.DeliveryAddress?.Latitude ?? 10.7850m;
             ViewBag.DeliveryLng = order.DeliveryAddress?.Longitude ?? 106.6950m;
+
+            // Mã VietQR có sẵn số tiền + nội dung (mã đơn) để người mua chỉ cần quét
+            ViewBag.Bank = _bank;
+            ViewBag.QrUrl = _bank.IsConfigured ? _bank.BuildQrUrl(order.TotalAmount, order.OrderCode) : null;
 
             return View(order);
         }
