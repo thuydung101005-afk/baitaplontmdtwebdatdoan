@@ -144,7 +144,7 @@ namespace baitaplontmdtwebdatdoan.Controllers
                         CustomerId = targetCustomerId,
                         SenderRole = "restaurant",
                         Message = $"Dạ chào bạn! Cảm ơn bạn đã nhắn tin cho {restaurant.Name}. Quán đã nhận được tin nhắn và sẽ phản hồi bạn trong giây lát. Bạn có thể tham khảo Menu hoặc thêm món vào giỏ trong lúc chờ nhé! ❤️",
-                        IsRead = false,
+                        IsRead = true, // khách đang online trong khung chat nên đã thấy lời chào này
                         CreatedAt = DateTime.UtcNow.AddSeconds(1)
                     };
                     _context.ChatMessages.Add(autoReply);
@@ -156,6 +156,70 @@ namespace baitaplontmdtwebdatdoan.Controllers
             }
 
             return Json(new { success = true });
+        }
+
+        // GET /Chat/MyChats - Hộp thư của khách: danh sách các quán mình đã nhắn tin
+        [HttpGet]
+        public async Task<IActionResult> MyChats()
+        {
+            var messages = await _context.ChatMessages
+                .Include(m => m.Restaurant)
+                .Where(m => m.CustomerId == CurrentUserId)
+                .OrderByDescending(m => m.CreatedAt)
+                .ToListAsync();
+
+            var conversations = messages
+                .GroupBy(m => m.RestaurantId)
+                .Select(g =>
+                {
+                    var last = g.First(); // đã sắp xếp mới nhất lên đầu
+                    return new ChatConversationViewModel
+                    {
+                        RestaurantId = g.Key,
+                        RestaurantName = last.Restaurant?.Name ?? "Nhà hàng",
+                        RestaurantLogoUrl = last.Restaurant?.LogoUrl,
+                        LastMessage = last.Message,
+                        LastSenderRole = last.SenderRole,
+                        LastTimeUtc = last.CreatedAt,
+                        UnreadCount = g.Count(x => !x.IsRead && x.SenderRole == "restaurant")
+                    };
+                })
+                .OrderByDescending(c => c.LastTimeUtc)
+                .ToList();
+
+            return View(conversations);
+        }
+
+        // GET /Chat/UnreadCount - số tin nhắn chưa đọc để hiện trên icon tin nhắn ở thanh đầu trang
+        [AllowAnonymous]
+        [HttpGet]
+        public async Task<IActionResult> UnreadCount()
+        {
+            if (User.Identity == null || !User.Identity.IsAuthenticated)
+            {
+                return Json(new { count = 0 });
+            }
+
+            var uid = CurrentUserId;
+            int count;
+
+            if (User.IsInRole("restaurant_owner") || User.IsInRole("admin"))
+            {
+                var restIds = await _context.Restaurants
+                    .Where(r => r.OwnerId == uid)
+                    .Select(r => r.Id)
+                    .ToListAsync();
+
+                count = await _context.ChatMessages
+                    .CountAsync(m => restIds.Contains(m.RestaurantId) && m.SenderRole == "customer" && !m.IsRead);
+            }
+            else
+            {
+                count = await _context.ChatMessages
+                    .CountAsync(m => m.CustomerId == uid && m.SenderRole == "restaurant" && !m.IsRead);
+            }
+
+            return Json(new { count });
         }
 
         // GET /Chat/ShopInbox - Dành cho chủ quán xem danh sách tin nhắn từ khách

@@ -131,7 +131,7 @@ namespace baitaplontmdtwebdatdoan.Controllers
 
         // POST /Cart/AddAjax - thêm vào giỏ qua AJAX, trả JSON
         [HttpPost]
-        public async Task<IActionResult> AddAjax(long menuItemId, int quantity, bool forceNewCart = false)
+        public async Task<IActionResult> AddAjax(long menuItemId, int quantity, bool forceNewCart = false, bool buyNow = false)
         {
             if (quantity <= 0) quantity = 1;
 
@@ -175,7 +175,13 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 c.UserId == CurrentUserId && c.MenuItemId == menuItemId);
 
             if (existingLine != null)
-                existingLine.Quantity += quantity;
+            {
+                // "Mua ngay": chỉ mua đúng số lượng vừa chọn, không cộng dồn vào số lượng đã có trong giỏ
+                if (buyNow)
+                    existingLine.Quantity = quantity;
+                else
+                    existingLine.Quantity += quantity;
+            }
             else
                 _context.CartItems.Add(new CartItem
                 {

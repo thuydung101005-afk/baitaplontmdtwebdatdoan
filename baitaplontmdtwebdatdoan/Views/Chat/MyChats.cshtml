@@ -1,0 +1,56 @@
+@model List<baitaplontmdtwebdatdoan.Models.ChatConversationViewModel>
+@{
+    ViewData["Title"] = "Tin nhắn của tôi";
+}
+
+<div class="mb-4">
+    <h4 class="fw-bold mb-1"><i class="fa-regular fa-comments text-brand me-2"></i>TIN NHẮN CỦA TÔI</h4>
+    <p class="text-muted small mb-0">Các cuộc trò chuyện của bạn với nhà hàng. Bấm vào một quán để mở khung chat.</p>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="bg-white rounded-4 shadow-sm p-5 text-center text-muted">
+        <i class="fa-regular fa-comment-dots fs-1 mb-3 opacity-50"></i>
+        <p class="mb-3">Bạn chưa nhắn tin với quán nào.</p>
+        <a asp-controller="Restaurant" asp-action="Index" class="btn btn-brand fw-bold rounded-pill px-4">
+            <i class="fa-solid fa-store me-1"></i> Chọn nhà hàng để nhắn tin
+        </a>
+    </div>
+}
+else
+{
+    <div class="bg-white rounded-4 shadow-sm p-3">
+        <div class="list-group list-group-flush">
+            @foreach (var c in Model)
+            {
+                var logo = string.IsNullOrEmpty(c.RestaurantLogoUrl)
+                    ? "https://ui-avatars.com/api/?name=" + Uri.EscapeDataString(c.RestaurantName) + "&background=FF7A00&color=fff"
+                    : c.RestaurantLogoUrl;
+                var local = c.LastTimeUtc.ToLocalTime();
+                var timeText = local.Date == DateTime.Now.Date ? local.ToString("HH:mm") : local.ToString("dd/MM HH:mm");
+
+                <a asp-controller="Restaurant" asp-action="Details" asp-route-id="@c.RestaurantId" asp-route-openChat="true"
+                   class="list-group-item list-group-item-action p-3 rounded-3 mb-2 border text-decoration-none">
+                    <div class="d-flex align-items-center gap-3">
+                        <img src="@logo" class="rounded-circle object-fit-cover shadow-xs border" width="48" height="48" alt="@c.RestaurantName"
+                             onerror="this.src='https://ui-avatars.com/api/?name=Foodie&background=FF7A00&color=fff';" />
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="fw-bold text-dark text-truncate">@c.RestaurantName</div>
+                                <div class="text-muted ms-2 flex-shrink-0" style="font-size:11px">@timeText</div>
+                            </div>
+                            <div class="text-muted small text-truncate @(c.UnreadCount > 0 ? "fw-bold text-dark" : "")">
+                                @(c.LastSenderRole == "customer" ? "Bạn: " : "")@c.LastMessage
+                            </div>
+                        </div>
+                        @if (c.UnreadCount > 0)
+                        {
+                            <span class="badge bg-danger rounded-pill">@c.UnreadCount</span>
+                        }
+                    </div>
+                </a>
+            }
+        </div>
+    </div>
+}

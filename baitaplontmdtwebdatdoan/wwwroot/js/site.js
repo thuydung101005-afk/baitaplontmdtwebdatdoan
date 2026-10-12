@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 fetch('/Cart/AddAjax', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `menuItemId=${id}&quantity=${qty}&forceNewCart=${forceNew}`
+                    body: `menuItemId=${id}&quantity=${qty}&forceNewCart=${forceNew}&buyNow=true`
                 })
                 .then(res => {
                     if (res.status === 401) {
@@ -241,6 +241,24 @@ function showGlobalToast(message) {
     }, 2500);
 }
 
+// Số tin nhắn chưa đọc trên icon tin nhắn ở thanh đầu trang
+function updateChatBadge() {
+    fetch('/Chat/UnreadCount')
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+            if (data && typeof data.count !== 'undefined') {
+                const badge = document.getElementById('chatCountBadge');
+                if (badge) {
+                    badge.textContent = data.count;
+                    badge.style.display = data.count > 0 ? 'inline-block' : 'none';
+                }
+            }
+        })
+        .catch(() => { });
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     updateFavoriteBadge();
+    updateChatBadge();
+    setInterval(updateChatBadge, 30000);
 });

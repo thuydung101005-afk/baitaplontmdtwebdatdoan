@@ -396,6 +396,11 @@ else
             });
         }
 
+        // Đi từ hộp thư tin nhắn vào (?openChat=true) thì tự mở sẵn khung chat
+        if (btnOpenChat && new URLSearchParams(window.location.search).get('openChat') === 'true') {
+            btnOpenChat.click();
+        }
+
         if (chatSendBtn) {
             chatSendBtn.addEventListener('click', () => sendCustomerMessage());
         }

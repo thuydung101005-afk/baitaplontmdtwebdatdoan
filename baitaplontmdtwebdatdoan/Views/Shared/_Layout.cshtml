@@ -40,6 +40,18 @@
                     <span id="cartCountBadge" class="badge bg-brand rounded-pill position-absolute top-0 start-100 translate-middle" style="display:none">0</span>
                 </a>
 
+                @{
+                    // Chủ quán/admin vào hộp thư của quán, khách hàng vào hộp thư của mình
+                    var isShopStaff = User.Identity != null && User.Identity.IsAuthenticated
+                                      && (User.IsInRole("restaurant_owner") || User.IsInRole("admin"));
+                    var chatInboxAction = isShopStaff ? "ShopInbox" : "MyChats";
+                }
+                <a asp-controller="Chat" asp-action="@chatInboxAction" id="chatIcon" title="Tin nhắn"
+                   class="btn btn-light rounded-circle position-relative">
+                    <i class="fa-regular fa-comments"></i>
+                    <span id="chatCountBadge" class="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle" style="display:none">0</span>
+                </a>
+
                 <button class="btn btn-light rounded-circle"><i class="fa-regular fa-bell"></i></button>
 
                 @if (User.Identity != null && User.Identity.IsAuthenticated)
