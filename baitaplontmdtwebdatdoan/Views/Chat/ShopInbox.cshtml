@@ -1,0 +1,190 @@
+@model dynamic
+@{
+    ViewData["Title"] = "Tin nhắn khách hàng - Quản lý quán";
+    var conversations = Model as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="fa-regular fa-comments text-brand me-2"></i>TIN NHẮN KHÁCH HÀNG</h4>
+        <p class="text-muted small mb-0">Trả lời tin nhắn và chăm sóc khách hàng trực tuyến theo thời gian thực</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- CỘT TRÁI: DANH SÁCH HỘI THOẠI -->
+    <div class="col-md-5 col-lg-4">
+        <div class="bg-white rounded-4 shadow-sm p-3 h-100">
+            <h6 class="fw-bold mb-3 text-muted text-uppercase small">Danh sách khách hàng</h6>
+
+            <div class="list-group list-group-flush overflow-auto" style="max-height: 520px;" id="inboxCustomerList">
+                @if (!conversations.Any())
+                {
+                    <div class="text-center py-5 text-muted small">
+                        <i class="fa-regular fa-comment-dots fs-1 mb-2 opacity-50"></i>
+                        <p class="mb-0">Chưa có khách hàng nào gửi tin nhắn.</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var c in conversations)
+                    {
+                        var cust = c.Customer;
+                        var rest = c.Restaurant;
+                        var lastMsg = c.LastMessage;
+                        int unread = c.UnreadCount;
+                        <a href="javascript:void(0)" class="list-group-item list-group-item-action p-3 rounded-3 mb-2 border conversation-item"
+                           onclick="loadShopConversation('@rest.Id', '@cust.Id', '@cust.FullName', '@rest.Name')">
+                            <div class="d-flex align-items-center gap-3">
+                                <img src="https://ui-avatars.com/api/?name=@cust.FullName&background=FF7A00&color=fff" 
+                                     class="rounded-circle shadow-xs" width="44" height="44" alt="avatar" />
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <div class="fw-bold text-dark text-truncate small">@cust.FullName</div>
+                                        <div class="text-muted" style="font-size: 11px;">@lastMsg?.CreatedAt.ToString("HH:mm")</div>
+                                    </div>
+                                    <div class="text-muted small text-truncate" style="font-size: 12px;">
+                                        @(lastMsg?.SenderRole == "restaurant" ? "Bạn: " : "")@lastMsg?.Message
+                                    </div>
+                                    <div class="badge bg-light text-secondary border mt-1" style="font-size: 10px;">@rest.Name</div>
+                                </div>
+                                @if (unread > 0)
+                                {
+                                    <span class="badge bg-danger rounded-pill">@unread</span>
+                                }
+                            </div>
+                        </a>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- CỘT PHẢI: KHUNG CHAT TRỰC TIẾP -->
+    <div class="col-md-7 col-lg-8">
+        <div class="bg-white rounded-4 shadow-sm p-4 d-flex flex-column" style="height: 600px;">
+            <!-- Header chat -->
+            <div class="d-flex justify-content-between align-items-center pb-3 border-bottom mb-3" id="shopChatHeader">
+                <div class="d-flex align-items-center gap-3">
+                    <img id="shopChatAvatar" src="https://placehold.co/80x80?text=Customer" class="rounded-circle shadow-xs" width="42" height="42" />
+                    <div>
+                        <div class="fw-bold text-dark fs-6" id="shopChatTitle">Chọn một khách hàng để xem tin nhắn</div>
+                        <div class="text-muted small" id="shopChatSubtitle">Trực tuyến &bull; Phản hồi khách hàng nhanh</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vùng hiển thị tin nhắn -->
+            <div class="flex-grow-1 overflow-auto p-3 bg-light rounded-3 mb-3 d-flex flex-column gap-2" id="shopChatMessages">
+                <div class="text-center py-5 text-muted small my-auto">
+                    <i class="fa-solid fa-comments fs-1 mb-2 opacity-50"></i>
+                    <p class="mb-0">Vui lòng chọn khách hàng ở cột bên trái để bắt đầu trò chuyện.</p>
+                </div>
+            </div>
+
+            <!-- Khung soạn tin nhắn -->
+            <div class="pt-2">
+                <div class="input-group">
+                    <input type="text" id="shopChatInput" class="form-control rounded-start-pill border py-2 px-3" 
+                           placeholder="Nhập câu trả lời cho khách hàng..." disabled />
+                    <button type="button" id="shopChatSendBtn" class="btn btn-brand rounded-end-pill px-4 fw-bold" disabled>
+                        <i class="fa-solid fa-paper-plane me-1"></i> Gửi
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        let currentRestId = null;
+        let currentCustId = null;
+
+        const chatHub = new signalR.HubConnectionBuilder()
+            .withUrl("/chatHub")
+            .withAutomaticReconnect()
+            .build();
+
+        chatHub.start();
+
+        chatHub.on("ReceiveMessage", function (role, senderName, text, time) {
+            appendMessage(role === 'restaurant', senderName, text, time);
+        });
+
+        function loadShopConversation(restId, custId, custName, restName) {
+            currentRestId = restId;
+            currentCustId = custId;
+
+            document.getElementById('shopChatTitle').innerText = custName;
+            document.getElementById('shopChatSubtitle').innerText = 'Khách của quán: ' + restName;
+            document.getElementById('shopChatAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(custName)}&background=FF7A00&color=fff`;
+
+            document.getElementById('shopChatInput').disabled = false;
+            document.getElementById('shopChatSendBtn').disabled = false;
+
+            chatHub.invoke("JoinChatRoom", restId.toString(), custId.toString()).catch(() => {});
+
+            // Tải lịch sử tin nhắn
+            fetch(`/Chat/GetMessages?restaurantId=${restId}&customerId=${custId}`)
+                .then(res => res.json())
+                .then(data => {
+                    const box = document.getElementById('shopChatMessages');
+                    box.innerHTML = '';
+                    if (data.messages && data.messages.length > 0) {
+                        data.messages.forEach(m => {
+                            appendMessage(m.isMe, m.senderName, m.message, m.time);
+                        });
+                    } else {
+                        box.innerHTML = '<div class="text-center text-muted small my-auto">Chưa có tin nhắn nào trong cuộc trò chuyện này.</div>';
+                    }
+                    box.scrollTop = box.scrollHeight;
+                });
+        }
+
+        function appendMessage(isMe, senderName, text, time) {
+            const box = document.getElementById('shopChatMessages');
+            const div = document.createElement('div');
+            div.className = isMe ? 'd-flex justify-content-end mb-2' : 'd-flex justify-content-start mb-2';
+
+            const bgClass = isMe ? 'bg-brand text-white' : 'bg-white text-dark border';
+            div.innerHTML = `
+                <div class="rounded-4 p-3 shadow-xs ${bgClass}" style="max-width: 75%;">
+                    <div class="fw-bold mb-1" style="font-size:11px; opacity: 0.85;">${senderName}</div>
+                    <div class="small mb-1">${escapeHtml(text)}</div>
+                    <div class="text-end" style="font-size:10px; opacity: 0.75;">${time}</div>
+                </div>
+            `;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function sendShopMessage() {
+            const input = document.getElementById('shopChatInput');
+            const text = input.value.trim();
+            if (!text || !currentRestId || !currentCustId) return;
+
+            input.value = '';
+
+            fetch('/Chat/SendMessage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `restaurantId=${currentRestId}&customerId=${currentCustId}&message=${encodeURIComponent(text)}`
+            });
+        }
+
+        document.getElementById('shopChatSendBtn').addEventListener('click', sendShopMessage);
+        document.getElementById('shopChatInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendShopMessage();
+            }
+        });
+
+        function escapeHtml(text) {
+            const d = document.createElement('div');
+            d.innerText = text;
+            return d.innerHTML;
+        }
+    </script>
+}

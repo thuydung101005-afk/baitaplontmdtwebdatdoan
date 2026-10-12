@@ -1,0 +1,141 @@
+@model List<baitaplontmdtwebdatdoan.Models.CartItem>
+@{
+    ViewData["Title"] = "Giỏ hàng";
+}
+
+<h4 class="fw-bold mb-4">GIỎ HÀNG CỦA BẠN</h4>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["CartMessage"] != null)
+{
+    <div class="alert alert-warning">@TempData["CartMessage"]</div>
+}
+
+@if (!Model.Any())
+{
+    <p class="text-muted">Giỏ hàng của bạn đang trống.</p>
+    <a asp-controller="Home" asp-action="Index" class="btn btn-brand fw-bold">Đặt món ngay</a>
+}
+else
+{
+    <form asp-controller="Order" asp-action="Checkout" method="get" id="checkoutForm">
+        <div class="bg-white rounded-4 shadow-sm p-3 mb-4">
+            <div class="d-flex align-items-center gap-2 border-bottom pb-2 mb-2">
+                <input type="checkbox" id="selectAll" class="form-check-input" checked />
+                <label for="selectAll" class="fw-semibold small mb-0">Chọn tất cả</label>
+            </div>
+
+            @foreach (var line in Model)
+            {
+                <div class="d-flex align-items-center justify-content-between border-bottom py-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <input type="checkbox" name="selectedIds" value="@line.Id" class="form-check-input cart-checkbox" checked />
+                        <img src="@(string.IsNullOrEmpty(line.MenuItem.ImageUrl) ? "https://placehold.co/80x80?text=Foodie" : line.MenuItem.ImageUrl)"
+                             width="60" height="60" style="object-fit:cover;border-radius:10px" alt="@line.MenuItem.Name" />
+                        <div>
+                            <div class="fw-semibold">@line.MenuItem.Name</div>
+                            <div class="text-muted small">@line.MenuItem.BasePrice.ToString("N0")đ</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary cart-qty-btn" data-id="@line.Id" data-action="decrease">-</button>
+                            <span class="fw-semibold cart-qty-value" data-id="@line.Id">@line.Quantity</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary cart-qty-btn" data-id="@line.Id" data-action="increase">+</button>
+                        </div>
+
+                        <div class="fw-bold text-brand line-total" data-id="@line.Id" data-price="@line.MenuItem.BasePrice" style="width:100px;text-align:right">
+                            @((line.MenuItem.BasePrice * line.Quantity).ToString("N0"))đ
+                        </div>
+
+                        <button type="button" class="btn btn-sm btn-outline-danger cart-remove-btn" data-id="@line.Id">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="bg-white rounded-4 shadow-sm p-4 d-flex justify-content-between align-items-center">
+            <div>
+                <div class="text-muted small">Tạm tính (<span id="selectedCount">@Model.Count</span> món)</div>
+                <div class="fs-4 fw-bold text-brand" id="selectedTotal">
+                    @Model.Sum(c => c.MenuItem.BasePrice * c.Quantity).ToString("N0")đ
+                </div>
+            </div>
+            <button type="submit" class="btn btn-brand fw-bold px-4 py-2" id="checkoutBtn">
+                Tiến hành thanh toán <i class="fa-solid fa-arrow-right ms-1"></i>
+            </button>
+        </div>
+    </form>
+}
+
+@section Scripts {
+    <script>
+        function recalcTotal() {
+            let total = 0, count = 0;
+            document.querySelectorAll('.cart-checkbox:checked').forEach(cb => {
+                const id = cb.value;
+                const qty = parseInt(document.querySelector(`.cart-qty-value[data-id="${id}"]`).textContent);
+                const price = parseFloat(document.querySelector(`.line-total[data-id="${id}"]`).dataset.price);
+                total += qty * price;
+                count++;
+            });
+            document.getElementById('selectedTotal').textContent = total.toLocaleString('vi-VN') + 'đ';
+            document.getElementById('selectedCount').textContent = count;
+            document.getElementById('checkoutBtn').disabled = count === 0;
+        }
+
+        document.getElementById('selectAll')?.addEventListener('change', function () {
+            document.querySelectorAll('.cart-checkbox').forEach(cb => cb.checked = this.checked);
+            recalcTotal();
+        });
+
+        document.querySelectorAll('.cart-checkbox').forEach(cb => {
+            cb.addEventListener('change', recalcTotal);
+        });
+
+        document.querySelectorAll('.cart-qty-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const id = this.dataset.id;
+                fetch('/Cart/UpdateQuantityAjax', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `id=${id}&action=${this.dataset.action}`
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.removed) { location.reload(); return; }
+                    document.querySelector(`.cart-qty-value[data-id="${id}"]`).textContent = data.quantity;
+                    const priceEl = document.querySelector(`.line-total[data-id="${id}"]`);
+                    priceEl.textContent = (data.quantity * priceEl.dataset.price).toLocaleString('vi-VN') + 'đ';
+                    recalcTotal();
+                });
+            });
+        });
+
+        document.querySelectorAll('.cart-remove-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                if (!confirm('Xoá món này khỏi giỏ hàng?')) return;
+                fetch('/Cart/RemoveAjax', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `id=${this.dataset.id}`
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    }
+                })
+                .catch(() => location.reload());
+            });
+        });
+
+        recalcTotal();
+    </script>
+}

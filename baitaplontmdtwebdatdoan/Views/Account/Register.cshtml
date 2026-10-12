@@ -1,0 +1,77 @@
+﻿@model baitaplontmdtwebdatdoan.Models.RegisterViewModel
+@{
+    ViewData["Title"] = "Đăng ký";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <title>Đăng ký - Foodie</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body class="bg-light">
+    <div class="d-flex align-items-center justify-content-center" style="min-height:100vh">
+        <div class="card shadow-sm p-4" style="width:100%;max-width:420px;border-radius:16px">
+            <div class="text-center mb-3">
+                <i class="fa-solid fa-utensils fs-2 text-brand"></i>
+                <h4 class="fw-bold text-brand mt-2">Tạo tài khoản Foodie</h4>
+            </div>
+
+            <form asp-controller="Account" asp-action="Register" method="post">
+                <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+
+                <div class="mb-3">
+                    <label asp-for="FullName" class="form-label small fw-semibold"></label>
+                    <input asp-for="FullName" class="form-control" placeholder="Nguyễn Văn A" />
+                    <span asp-validation-for="FullName" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Email" class="form-label small fw-semibold"></label>
+                    <input asp-for="Email" class="form-control" placeholder="you@example.com" />
+                    <span asp-validation-for="Email" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Phone" class="form-label small fw-semibold"></label>
+                    <input asp-for="Phone" class="form-control" placeholder="0900000000" />
+                    <span asp-validation-for="Phone" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Password" class="form-label small fw-semibold"></label>
+                    <input asp-for="Password" class="form-control" />
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="ConfirmPassword" class="form-label small fw-semibold"></label>
+                    <input asp-for="ConfirmPassword" class="form-control" />
+                    <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Bạn đăng ký với vai trò</label>
+                    <select asp-for="Role" class="form-select">
+                        <option value="customer">Khách hàng - đặt món ăn</option>
+                        <option value="restaurant_owner">Chủ nhà hàng - bán đồ ăn</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-brand w-100 fw-bold py-2">Đăng ký</button>
+            </form>
+
+            <div class="text-center mt-3 small">
+                Đã có tài khoản? <a asp-controller="Account" asp-action="Login" class="text-brand fw-semibold">Đăng nhập</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,650 @@
+@model baitaplontmdtwebdatdoan.Models.RestaurantRevenueViewModel
+@{
+    ViewData["Title"] = "Báo cáo Doanh thu & Chiết khấu hoa hồng - " + Model.Restaurant.Name;
+    string currentPeriod = Model.Period;
+
+    string GetPeriodLabel(string period) => period switch
+    {
+        "today" => "Hôm nay",
+        "7days" => "7 ngày qua",
+        "30days" => "30 ngày qua",
+        "all" => "Toàn bộ thời gian",
+        _ => "30 ngày qua"
+    };
+
+    string GetPaymentBadge(string method) => method switch
+    {
+        "cod" => "bg-secondary-subtle text-dark border",
+        "bank_transfer" => "bg-info-subtle text-info-emphasis border border-info",
+        "wallet" => "bg-success-subtle text-success border border-success",
+        "credit_card" => "bg-primary-subtle text-primary border border-primary",
+        _ => "bg-light text-dark"
+    };
+
+    string GetPaymentName(string method) => method switch
+    {
+        "cod" => "Tiền mặt (COD)",
+        "bank_transfer" => "Chuyển khoản VietQR",
+        "wallet" => "Ví FoodiePay",
+        "credit_card" => "Thẻ quốc tế (Visa/Master)",
+        _ => method
+    };
+}
+
+<!-- HEADER -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h4 class="fw-bold mb-0">📊 Tài chính & Doanh thu Quán</h4>
+            <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill">
+                <i class="fa-solid fa-circle-check me-1"></i>Đối tác Foodie Merchant
+            </span>
+        </div>
+        <p class="text-muted small mb-0">
+            Quán: <strong class="text-dark">@Model.Restaurant.Name</strong> | Minh bạch dòng tiền, đối soát chiết khấu hoa hồng theo chuẩn sàn thương mại điện tử
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary px-3 py-2 rounded-3 shadow-sm fw-semibold" onclick="window.print()">
+            <i class="fa-solid fa-print me-1"></i> In sao kê
+        </button>
+        <button type="button" class="btn btn-success px-4 py-2 rounded-3 shadow-sm fw-bold text-white" data-bs-toggle="modal" data-bs-target="#payoutModal">
+            <i class="fa-solid fa-building-columns me-2"></i> Rút tiền về ngân hàng
+        </button>
+    </div>
+</div>
+
+<!-- TABS NAVIGATION -->
+<ul class="nav nav-pills mb-4 bg-white p-2 rounded-4 shadow-sm" style="width:fit-content">
+    <li class="nav-item">
+        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Orders">
+            <i class="fa-solid fa-receipt me-2"></i>Đơn hàng
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Menu">
+            <i class="fa-solid fa-utensils me-2"></i>Thực đơn món ăn
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active bg-brand text-white fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Revenue">
+            <i class="fa-solid fa-chart-line me-2"></i>Doanh thu & Tài chính
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="Chat" asp-action="ShopInbox">
+            <i class="fa-regular fa-comments me-2 text-primary"></i>Tin nhắn khách
+        </a>
+    </li>
+</ul>
+
+<!-- NOTIFICATIONS -->
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-4 shadow-sm mb-4 border-0 border-start border-4 border-success" role="alert">
+        <div class="d-flex align-items-center">
+            <i class="fa-solid fa-circle-check fs-4 me-3 text-success"></i>
+            <div>
+                <strong>Thành công!</strong> @TempData["SuccessMessage"]
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-4 shadow-sm mb-4 border-0 border-start border-4 border-danger" role="alert">
+        <div class="d-flex align-items-center">
+            <i class="fa-solid fa-triangle-exclamation fs-4 me-3 text-danger"></i>
+            <div>
+                <strong>Lỗi!</strong> @TempData["Error"]
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- FILTER BAR -->
+<div class="bg-white rounded-4 p-3 shadow-sm mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div class="d-flex align-items-center gap-2">
+        <span class="text-muted small fw-semibold"><i class="fa-regular fa-calendar-days me-1"></i> Kỳ đối soát:</span>
+        <div class="btn-group" role="group">
+            <a asp-action="Revenue" asp-route-period="today" class="btn btn-sm @(currentPeriod == "today" ? "btn-dark fw-bold" : "btn-outline-secondary") rounded-start-3 px-3">
+                Hôm nay
+            </a>
+            <a asp-action="Revenue" asp-route-period="7days" class="btn btn-sm @(currentPeriod == "7days" ? "btn-dark fw-bold" : "btn-outline-secondary") px-3">
+                7 ngày qua
+            </a>
+            <a asp-action="Revenue" asp-route-period="30days" class="btn btn-sm @(currentPeriod == "30days" ? "btn-dark fw-bold" : "btn-outline-secondary") px-3">
+                30 ngày qua
+            </a>
+            <a asp-action="Revenue" asp-route-period="all" class="btn btn-sm @(currentPeriod == "all" ? "btn-dark fw-bold" : "btn-outline-secondary") rounded-end-3 px-3">
+                Toàn bộ
+            </a>
+        </div>
+    </div>
+    <div class="text-muted small">
+        <i class="fa-solid fa-shield-halved text-success me-1"></i> Cơ chế quyết toán: <strong>T+0 (Ngay khi đơn giao thành công)</strong>
+    </div>
+</div>
+
+<!-- KEY FINANCIAL KPI CARDS -->
+<div class="row g-3 mb-4">
+    <!-- NET PAYOUT (HERO CARD) -->
+    <div class="col-12 col-xl-4">
+        <div class="rounded-4 p-4 shadow-sm h-100 text-white position-relative overflow-hidden" 
+             style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <span class="badge bg-white text-success fw-bold px-2 py-1 rounded-pill mb-2">
+                        <i class="fa-solid fa-wallet me-1"></i> Thực nhận về quán (Net)
+                    </span>
+                    <div class="text-white-50 small">Số tiền sau khi trừ hoa hồng & phí sàn</div>
+                </div>
+                <div class="p-3 bg-white bg-opacity-25 rounded-circle">
+                    <i class="fa-solid fa-sack-dollar fs-3"></i>
+                </div>
+            </div>
+            <div class="display-6 fw-bold my-2">
+                @Model.NetPayout.ToString("N0") <span class="fs-4">₫</span>
+            </div>
+            <div class="d-flex align-items-center justify-content-between pt-2 border-top border-white border-opacity-25">
+                <span class="small text-white-50">Tỷ lệ giữ lại: ~@(100 - Model.CommissionRate - Model.PaymentFeeRate)%</span>
+                <button type="button" class="btn btn-sm btn-light text-success fw-bold px-3 rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#payoutModal">
+                    Rút tiền ngay <i class="fa-solid fa-arrow-right ms-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GROSS SALES -->
+    <div class="col-6 col-xl-2 col-md-3">
+        <div class="bg-white rounded-4 p-3 shadow-sm h-100 border-start border-4 border-primary d-flex flex-column justify-content-between">
+            <div>
+                <div class="text-muted small fw-semibold mb-1">Doanh thu gộp</div>
+                <div class="fs-4 fw-bold text-dark">@Model.TotalGrossSales.ToString("N0") <span class="fs-6">₫</span></div>
+            </div>
+            <div class="text-muted small pt-2 border-top">
+                <i class="fa-solid fa-basket-shopping text-primary me-1"></i> Tiền món khách trả
+            </div>
+        </div>
+    </div>
+
+    <!-- COMMISSION -->
+    <div class="col-6 col-xl-2 col-md-3">
+        <div class="bg-white rounded-4 p-3 shadow-sm h-100 border-start border-4 border-danger d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                    <span class="text-muted small fw-semibold">Chiết khấu sàn</span>
+                    <span class="badge bg-danger-subtle text-danger rounded-pill">-@Model.CommissionRate%</span>
+                </div>
+                <div class="fs-4 fw-bold text-danger">-@Model.TotalCommission.ToString("N0") <span class="fs-6">₫</span></div>
+            </div>
+            <div class="text-muted small pt-2 border-top">
+                <i class="fa-solid fa-handshake text-danger me-1"></i> Phí dịch vụ Foodie
+            </div>
+        </div>
+    </div>
+
+    <!-- PAYMENT / TECH FEE -->
+    <div class="col-6 col-xl-2 col-md-3">
+        <div class="bg-white rounded-4 p-3 shadow-sm h-100 border-start border-4 border-warning d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                    <span class="text-muted small fw-semibold">Phí thanh toán</span>
+                    <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill">-@Model.PaymentFeeRate%</span>
+                </div>
+                <div class="fs-4 fw-bold text-warning-emphasis">-@Model.TotalPaymentFee.ToString("N0") <span class="fs-6">₫</span></div>
+            </div>
+            <div class="text-muted small pt-2 border-top">
+                <i class="fa-solid fa-microchip text-warning-emphasis me-1"></i> Phí cổng giao dịch
+            </div>
+        </div>
+    </div>
+
+    <!-- COMPLETED ORDERS & AOV -->
+    <div class="col-6 col-xl-2 col-md-3">
+        <div class="bg-white rounded-4 p-3 shadow-sm h-100 border-start border-4 border-info d-flex flex-column justify-content-between">
+            <div>
+                <div class="text-muted small fw-semibold mb-1">Đơn hoàn tất</div>
+                <div class="fs-4 fw-bold text-info">@Model.CompletedOrderCount <span class="fs-6 text-muted">đơn</span></div>
+            </div>
+            <div class="text-muted small pt-2 border-top text-truncate" title="Giá trị trung bình mỗi đơn">
+                <i class="fa-solid fa-chart-pie text-info me-1"></i> AOV: @Model.AverageOrderValue.ToString("N0")₫
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FORMULA EXPLANATION / TRANSPARENCY BANNER (ShopeeFood / Grab style) -->
+<div class="card border-0 rounded-4 shadow-sm mb-4 overflow-hidden">
+    <div class="card-body p-4 bg-light border-start border-4 border-success">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+            <div>
+                <h6 class="fw-bold mb-1 text-dark">
+                    <i class="fa-solid fa-calculator text-success me-2"></i>Minh bạch công thức quyết toán theo chuẩn sàn
+                </h6>
+                <div class="text-muted small">Cơ chế khấu trừ tự động rõ ràng cho từng đơn hàng đã giao thành công</div>
+            </div>
+            <span class="badge bg-white text-muted border px-3 py-2 rounded-pill small">
+                Tỷ lệ chiết khấu áp dụng: <strong>@(Model.CommissionRate + Model.PaymentFeeRate)%</strong> (Hoa hồng @Model.CommissionRate% + Công nghệ @Model.PaymentFeeRate%)
+            </span>
+        </div>
+
+        <!-- VISUAL FORMULA STEPPER -->
+        <div class="row g-2 text-center align-items-center py-2 px-1 rounded-3 bg-white border">
+            <div class="col-12 col-md-3 p-2">
+                <div class="text-muted small">Tiền món khách mua (Gộp)</div>
+                <div class="fw-bold fs-5 text-dark">@Model.TotalGrossSales.ToString("N0") ₫</div>
+                <span class="badge bg-secondary-subtle text-secondary small">100% Doanh thu</span>
+            </div>
+            <div class="col-12 col-md-1 text-muted fs-4">
+                <i class="fa-solid fa-minus"></i>
+            </div>
+            <div class="col-12 col-md-2 p-2">
+                <div class="text-danger small">Hoa hồng sàn (@Model.CommissionRate%)</div>
+                <div class="fw-bold fs-5 text-danger">-@Model.TotalCommission.ToString("N0") ₫</div>
+                <span class="badge bg-danger-subtle text-danger small">Quảng bá & vận hành</span>
+            </div>
+            <div class="col-12 col-md-1 text-muted fs-4">
+                <i class="fa-solid fa-minus"></i>
+            </div>
+            <div class="col-12 col-md-2 p-2">
+                <div class="text-warning-emphasis small">Phí công nghệ (@Model.PaymentFeeRate%)</div>
+                <div class="fw-bold fs-5 text-warning-emphasis">-@Model.TotalPaymentFee.ToString("N0") ₫</div>
+                <span class="badge bg-warning-subtle text-warning-emphasis small">Cổng thanh toán & App</span>
+            </div>
+            <div class="col-12 col-md-1 text-muted fs-4">
+                <i class="fa-solid fa-equals"></i>
+            </div>
+            <div class="col-12 col-md-2 p-2 bg-success-subtle rounded-3">
+                <div class="text-success small fw-semibold">Thực nhận về ví quán</div>
+                <div class="fw-bold fs-5 text-success">@Model.NetPayout.ToString("N0") ₫</div>
+                <span class="badge bg-success text-white small">80.5% Tiền về ví</span>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-2 text-muted small">
+            <div class="col-md-4">
+                <i class="fa-solid fa-check text-success me-1"></i> <strong>Miễn phí vận chuyển cho quán:</strong> Cước phí ship được thanh toán trực tiếp giữa khách và shipper.
+            </div>
+            <div class="col-md-4">
+                <i class="fa-solid fa-check text-success me-1"></i> <strong>Quyết toán tức thì T+0:</strong> Đơn hoàn thành sẽ tự động cộng số dư vào ví quán ngay lập tức.
+            </div>
+            <div class="col-md-4">
+                <i class="fa-solid fa-check text-success me-1"></i> <strong>Rút tiền 24/7:</strong> Rút về tài khoản ngân hàng bất kỳ, không mất phí rút tiền.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CHARTS SECTION -->
+<div class="row g-4 mb-4">
+    <div class="col-12 col-lg-8">
+        <div class="bg-white rounded-4 p-4 shadow-sm h-100">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <div>
+                    <h6 class="fw-bold mb-1"><i class="fa-solid fa-chart-column text-primary me-2"></i>Biến động Doanh thu & Thực nhận theo ngày</h6>
+                    <span class="text-muted small">So sánh tiền gộp bán ra và tiền thực tế quán nhận về ví</span>
+                </div>
+                <span class="badge bg-light text-dark border px-3 py-1 rounded-pill">
+                    Kỳ xem: @GetPeriodLabel(currentPeriod)
+                </span>
+            </div>
+            <div style="position: relative; height: 320px;">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- WALLET SUMMARY & QUICK WITHDRAWAL CARD -->
+    <div class="col-12 col-lg-4">
+        <div class="bg-white rounded-4 p-4 shadow-sm h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h6 class="fw-bold mb-0"><i class="fa-solid fa-piggy-bank text-warning-emphasis me-2"></i>Ví đối tác quán</h6>
+                    <span class="badge bg-success text-white px-2 py-1 rounded-pill">Hoạt động</span>
+                </div>
+
+                <div class="p-3 rounded-4 mb-3" style="background:#f8fafc; border: 1px dashed #cbd5e1;">
+                    <div class="text-muted small mb-1">Số dư khả dụng hiện tại:</div>
+                    <div class="fs-3 fw-bold text-success mb-2">@Model.NetPayout.ToString("N0") ₫</div>
+                    <div class="d-flex align-items-center gap-2 text-muted small">
+                        <i class="fa-solid fa-shield-check text-primary"></i> Đã bảo chứng bởi Foodie Finance
+                    </div>
+                </div>
+
+                <ul class="list-unstyled small mb-4">
+                    <li class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted">Tổng đơn thành công:</span>
+                        <strong class="text-dark">@Model.CompletedOrderCount đơn</strong>
+                    </li>
+                    <li class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted">Tổng tiền món gộp:</span>
+                        <strong class="text-dark">@Model.TotalGrossSales.ToString("N0") ₫</strong>
+                    </li>
+                    <li class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted">Tổng hoa hồng sàn (18%):</span>
+                        <strong class="text-danger">-@Model.TotalCommission.ToString("N0") ₫</strong>
+                    </li>
+                    <li class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted">Tổng phí xử lý (1.5%):</span>
+                        <strong class="text-warning-emphasis">-@Model.TotalPaymentFee.ToString("N0") ₫</strong>
+                    </li>
+                    <li class="d-flex justify-content-between py-2">
+                        <span class="fw-bold text-dark">Thực nhận về ví (80.5%):</span>
+                        <strong class="fw-bold text-success fs-6">@Model.NetPayout.ToString("N0") ₫</strong>
+                    </li>
+                </ul>
+            </div>
+
+            <button type="button" class="btn btn-success w-100 py-3 rounded-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#payoutModal">
+                <i class="fa-solid fa-arrow-down-to-bracket me-2"></i> Yêu cầu rút tiền về tài khoản
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- DETAILED SETTLEMENT STATEMENT TABLE -->
+<div class="bg-white rounded-4 p-4 shadow-sm mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-3">
+        <div>
+            <h5 class="fw-bold mb-1"><i class="fa-solid fa-file-invoice-dollar text-success me-2"></i>Bảng kê chi tiết quyết toán từng đơn hàng</h5>
+            <span class="text-muted small">Khấu trừ hoa hồng và ghi nhận thực nhận chi tiết đến từng mã đơn</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <div class="input-group input-group-sm" style="max-width: 280px;">
+                <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                <input type="text" id="settlementSearch" class="form-control border-start-0" placeholder="Tìm mã đơn, phương thức..." />
+            </div>
+            <button class="btn btn-sm btn-outline-secondary rounded-3 px-3" onclick="exportTableToCSV('sao_ke_doanh_thu.csv')">
+                <i class="fa-solid fa-file-csv me-1"></i> Xuất CSV
+            </button>
+        </div>
+    </div>
+
+    @if (!Model.OrderSettlements.Any())
+    {
+        <div class="text-center py-5">
+            <div class="bg-light d-inline-flex p-4 rounded-circle mb-3">
+                <i class="fa-regular fa-folder-open fs-1 text-muted"></i>
+            </div>
+            <h6 class="fw-bold text-dark mb-1">Chưa có dữ liệu quyết toán trong kỳ này</h6>
+            <p class="text-muted small mb-3">Các đơn hàng khi khách nhận hàng và trạng thái chuyển sang 'Hoàn thành' sẽ tự động xuất hiện tại đây.</p>
+            <a asp-action="Revenue" asp-route-period="all" class="btn btn-sm btn-outline-brand fw-semibold px-3">
+                Xem toàn bộ thời gian
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="settlementTable">
+                <thead class="table-light small text-muted text-uppercase">
+                    <tr>
+                        <th class="ps-3">Mã đơn</th>
+                        <th>Thời gian giao</th>
+                        <th>Phương thức</th>
+                        <th class="text-end">Tiền món (Gộp)</th>
+                        <th class="text-end text-danger">Hoa hồng sàn (-18%)</th>
+                        <th class="text-end text-warning-emphasis">Phí CN (-1.5%)</th>
+                        <th class="text-end text-success">Thực nhận quán</th>
+                        <th class="text-center">Trạng thái</th>
+                        <th class="text-center pe-3">Chi tiết</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.OrderSettlements)
+                    {
+                        <tr>
+                            <td class="ps-3 fw-bold">
+                                <span class="badge bg-light text-dark border font-monospace">#@item.OrderCode</span>
+                            </td>
+                            <td class="small text-muted">
+                                @item.CompletedAt.ToString("dd/MM/yyyy HH:mm")
+                            </td>
+                            <td>
+                                <span class="badge @GetPaymentBadge(item.PaymentMethod) rounded-pill small">
+                                    @GetPaymentName(item.PaymentMethod)
+                                </span>
+                            </td>
+                            <td class="text-end fw-semibold text-dark">
+                                +@item.Subtotal.ToString("N0") ₫
+                            </td>
+                            <td class="text-end text-danger small">
+                                -@item.CommissionFee.ToString("N0") ₫
+                            </td>
+                            <td class="text-end text-warning-emphasis small">
+                                -@item.PaymentFee.ToString("N0") ₫
+                            </td>
+                            <td class="text-end fw-bold text-success fs-6">
+                                +@item.NetAmount.ToString("N0") ₫
+                            </td>
+                            <td class="text-center">
+                                @if (item.SettlementStatus == "settled")
+                                {
+                                    <span class="badge bg-success-subtle text-success border border-success rounded-pill small">
+                                        <i class="fa-solid fa-check me-1"></i>Đã vào ví
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning rounded-pill small">
+                                        <i class="fa-solid fa-clock me-1"></i>Chờ đối soát
+                                    </span>
+                                }
+                            </td>
+                            <td class="text-center pe-3">
+                                <a asp-controller="Order" asp-action="Details" asp-route-id="@item.OrderId" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2" title="Xem đơn hàng">
+                                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot class="table-light fw-bold">
+                    <tr>
+                        <td colspan="3" class="ps-3 text-uppercase small">Tổng cộng (@Model.OrderSettlements.Count đơn):</td>
+                        <td class="text-end text-dark">+@Model.TotalGrossSales.ToString("N0") ₫</td>
+                        <td class="text-end text-danger">-@Model.TotalCommission.ToString("N0") ₫</td>
+                        <td class="text-end text-warning-emphasis">-@Model.TotalPaymentFee.ToString("N0") ₫</td>
+                        <td class="text-end text-success fs-6">+@Model.NetPayout.ToString("N0") ₫</td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    }
+</div>
+
+<!-- PAYOUT / WITHDRAWAL MODAL -->
+<div class="modal fade" id="payoutModal" tabindex="-1" aria-labelledby="payoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <h5 class="modal-title fw-bold" id="payoutModalLabel">
+                        <i class="fa-solid fa-building-columns text-success me-2"></i>Yêu cầu rút tiền về tài khoản
+                    </h5>
+                    <p class="text-muted small mb-0">Tiền sẽ được giải ngân vào tài khoản ngân hàng của bạn</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-controller="RestaurantOwner" asp-action="RequestPayout" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body pt-3">
+                    <div class="p-3 bg-light rounded-3 mb-3 d-flex justify-content-between align-items-center">
+                        <span class="text-muted small">Số dư ví có thể rút:</span>
+                        <strong class="fs-5 text-success">@Model.NetPayout.ToString("N0") ₫</strong>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Số tiền muốn rút (VNĐ) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="number" name="amount" id="payoutAmount" class="form-control form-control-lg fw-bold" 
+                                   value="@((long)Model.NetPayout)" min="50000" max="@((long)Model.NetPayout)" required />
+                            <span class="input-group-text">₫</span>
+                            <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('payoutAmount').value = '@((long)Model.NetPayout)'">
+                                Rút tất cả
+                            </button>
+                        </div>
+                        <div class="form-text text-muted">Số tiền tối thiểu: 50.000₫. Miễn phí rút tiền.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Ngân hàng thụ hưởng <span class="text-danger">*</span></label>
+                        <select name="bankName" class="form-select" required>
+                            <option value="MB Bank (Ngân hàng Quân Đội)">MB Bank (Ngân hàng Quân Đội)</option>
+                            <option value="Vietcombank">Vietcombank (Ngoại thương Việt Nam)</option>
+                            <option value="Techcombank">Techcombank (Kỹ Thương)</option>
+                            <option value="BIDV">BIDV (Đầu tư và Phát triển)</option>
+                            <option value="VPBank">VPBank (Việt Nam Thịnh Vượng)</option>
+                            <option value="ACB">ACB (Á Châu)</option>
+                            <option value="TPBank">TPBank (Tiên Phong)</option>
+                            <option value="Agribank">Agribank (Nông nghiệp & PTNT)</option>
+                            <option value="Sacombank">Sacombank (Sài Gòn Thương Tín)</option>
+                            <option value="Ví MoMo">Ví MoMo</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Số tài khoản ngân hàng <span class="text-danger">*</span></label>
+                        <input type="text" name="accountNumber" class="form-control" placeholder="Ví dụ: 0386888999" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Tên chủ tài khoản (Viết in hoa, không dấu) <span class="text-danger">*</span></label>
+                        <input type="text" name="accountHolder" class="form-control text-uppercase" placeholder="NGUYEN VAN A" required />
+                    </div>
+
+                    <div class="alert alert-info py-2 px-3 small rounded-3 mb-0">
+                        <i class="fa-solid fa-circle-info me-1"></i> Lệnh rút tiền được kiểm tra và chuyển khoản tự động trong vòng 24h làm việc (không tính T7, CN).
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-3 px-3" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-success fw-bold rounded-3 px-4 shadow-sm">
+                        <i class="fa-solid fa-paper-plane me-1"></i> Xác nhận rút tiền
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Dữ liệu biểu đồ từ Server
+            const rawStats = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DailyStats));
+            const labels = rawStats.map(s => s.DateLabel);
+            const grossData = rawStats.map(s => s.GrossSales);
+            const netData = rawStats.map(s => s.NetPayout);
+
+            const ctx = document.getElementById('revenueChart');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Doanh thu gộp (₫)',
+                                data: grossData,
+                                backgroundColor: 'rgba(59, 130, 246, 0.75)',
+                                borderColor: '#3b82f6',
+                                borderWidth: 1.5,
+                                borderRadius: 6,
+                                barPercentage: 0.6
+                            },
+                            {
+                                label: 'Thực nhận về ví (₫)',
+                                data: netData,
+                                backgroundColor: 'rgba(16, 185, 129, 0.85)',
+                                borderColor: '#10b981',
+                                borderWidth: 1.5,
+                                borderRadius: 6,
+                                barPercentage: 0.6
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    usePointStyle: true,
+                                    font: { family: 'inherit', weight: '600' }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let val = context.parsed.y || 0;
+                                        return context.dataset.label + ': ' + val.toLocaleString('vi-VN') + ' ₫';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        if (value >= 1000000) return (value / 1000000) + 'M ₫';
+                                        if (value >= 1000) return (value / 1000) + 'k ₫';
+                                        return value + ' ₫';
+                                    }
+                                },
+                                grid: { color: '#f1f5f9' }
+                            },
+                            x: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Client-side search in settlement table
+            const searchInput = document.getElementById('settlementSearch');
+            if (searchInput) {
+                searchInput.addEventListener('input', function () {
+                    const q = this.value.toLowerCase().trim();
+                    const rows = document.querySelectorAll('#settlementTable tbody tr');
+                    rows.forEach(row => {
+                        const text = row.innerText.toLowerCase();
+                        row.style.display = text.includes(q) ? '' : 'none';
+                    });
+                });
+            }
+        });
+
+        // Xuất file CSV báo cáo sao kê
+        function exportTableToCSV(filename) {
+            let csv = [];
+            const rows = document.querySelectorAll('#settlementTable tr');
+            for (let i = 0; i < rows.length; i++) {
+                let row = [], cols = rows[i].querySelectorAll('td, th');
+                for (let j = 0; j < cols.length - 1; j++) {
+                    let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, '').trim();
+                    data = data.replace(/"/g, '""');
+                    row.push('"' + data + '"');
+                }
+                csv.push(row.join(','));
+            }
+            const csvFile = new Blob(["\uFEFF" + csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const downloadLink = document.createElement('a');
+            downloadLink.download = filename;
+            downloadLink.href = window.URL.createObjectURL(csvFile);
+            downloadLink.style.display = 'none';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+    </script>
+}

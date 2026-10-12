@@ -1,0 +1,74 @@
+﻿@{
+    ViewData["Title"] = "Quản trị hệ thống";
+    var pending = (List<baitaplontmdtwebdatdoan.Models.Restaurant>)ViewBag.PendingRestaurants;
+    var approved = (List<baitaplontmdtwebdatdoan.Models.Restaurant>)ViewBag.ApprovedRestaurants;
+
+    string GetStatusLabel(string status) => status switch
+    {
+        "open" => "Đang hoạt động",
+        "closed" => "Đã đóng / Từ chối",
+        "busy" => "Đang bận",
+        "pending_approval" => "Chờ duyệt",
+        _ => status
+    };
+    string GetStatusBadge(string status) => status switch
+    {
+        "open" => "bg-success",
+        "closed" => "bg-danger",
+        "busy" => "bg-warning text-dark",
+        "pending_approval" => "bg-secondary",
+        _ => "bg-secondary"
+    };
+}
+
+<h4 class="fw-bold mb-4">🛠️ QUẢN TRỊ HỆ THỐNG</h4>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+
+<h5 class="fw-bold mb-3">Nhà hàng chờ duyệt (@pending.Count)</h5>
+
+@if (!pending.Any())
+{
+    <p class="text-muted mb-4">Không có nhà hàng nào đang chờ duyệt.</p>
+}
+
+@foreach (var r in pending)
+{
+    <div class="bg-white rounded-4 shadow-sm p-3 mb-3 d-flex justify-content-between align-items-center">
+        <div>
+            <strong>@r.Name</strong>
+            <div class="text-muted small">@r.Address — @r.Phone</div>
+            <div class="text-muted small">Đăng ký lúc: @r.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+        </div>
+        <div class="d-flex gap-2">
+            <form asp-controller="Admin" asp-action="ApproveRestaurant" asp-route-id="@r.Id" method="post">
+                <button type="submit" class="btn btn-success btn-sm fw-bold">
+                    <i class="fa-solid fa-check me-1"></i> Duyệt
+                </button>
+            </form>
+            <form asp-controller="Admin" asp-action="RejectRestaurant" asp-route-id="@r.Id" method="post"
+                  onsubmit="return confirm('Từ chối nhà hàng này?');">
+                <input type="hidden" name="reason" value="Không đạt yêu cầu" />
+                <button type="submit" class="btn btn-outline-danger btn-sm fw-bold">
+                    <i class="fa-solid fa-xmark me-1"></i> Từ chối
+                </button>
+            </form>
+        </div>
+    </div>
+}
+
+<hr class="my-4" />
+
+<h5 class="fw-bold mb-3">Tất cả nhà hàng khác</h5>
+<div class="bg-white rounded-4 shadow-sm p-3">
+    @foreach (var r in approved)
+    {
+        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <span>@r.Name</span>
+            <span class="badge @GetStatusBadge(r.Status)">@GetStatusLabel(r.Status)</span>
+        </div>
+    }
+</div>

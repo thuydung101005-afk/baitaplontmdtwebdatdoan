@@ -1,0 +1,133 @@
+@model baitaplontmdtwebdatdoan.Models.MenuItemFormViewModel
+@{
+    ViewData["Title"] = "Chỉnh sửa món ăn - " + Model.Name;
+    var categories = ViewBag.Categories as List<baitaplontmdtwebdatdoan.Models.MenuCategory> ?? new List<baitaplontmdtwebdatdoan.Models.MenuCategory>();
+}
+
+<div class="mb-4">
+    <a asp-controller="RestaurantOwner" asp-action="Menu" class="text-decoration-none text-muted small fw-semibold">
+        <i class="fa-solid fa-arrow-left me-1"></i> Quay lại thực đơn
+    </a>
+    <h4 class="fw-bold mt-2">Chỉnh sửa món: @Model.Name</h4>
+</div>
+
+<div class="bg-white rounded-4 shadow-sm p-4" style="max-width:750px">
+    <form asp-controller="RestaurantOwner" asp-action="EditMenuItem" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data">
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+        <input type="hidden" asp-for="Id" />
+
+        <div class="mb-3">
+            <label asp-for="Name" class="form-label fw-semibold small">Tên món ăn <span class="text-danger">*</span></label>
+            <input asp-for="Name" class="form-control rounded-3" placeholder="VD: Cơm tấm sườn bì chả, Trà sữa trân châu..." />
+            <span asp-validation-for="Name" class="text-danger small"></span>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label asp-for="BasePrice" class="form-label fw-semibold small">Giá bán (VNĐ) <span class="text-danger">*</span></label>
+                <div class="input-group">
+                    <input asp-for="BasePrice" type="number" step="1000" class="form-control rounded-start-3" />
+                    <span class="input-group-text rounded-end-3">đ</span>
+                </div>
+                <span asp-validation-for="BasePrice" class="text-danger small"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="CategoryId" class="form-label fw-semibold small">Danh mục</label>
+                <select asp-for="CategoryId" class="form-select rounded-3">
+                    <option value="">-- Chọn danh mục --</option>
+                    @foreach (var cat in categories)
+                    {
+                        <option value="@cat.Id" selected="@(Model.CategoryId == cat.Id)">@cat.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="NewCategoryName" class="form-label fw-semibold small">Hoặc chuyển sang danh mục mới</label>
+            <input asp-for="NewCategoryName" class="form-control rounded-3" placeholder="Nhập tên danh mục mới nếu muốn..." />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Description" class="form-label fw-semibold small">Mô tả món ăn</label>
+            <textarea asp-for="Description" class="form-control rounded-3" rows="3"></textarea>
+            <span asp-validation-for="Description" class="text-danger small"></span>
+        </div>
+
+        <!-- IMAGE UPLOAD / URL -->
+        <div class="mb-3 p-3 bg-light rounded-3 border">
+            <label class="form-label fw-semibold small mb-2"><i class="fa-regular fa-image me-1 text-brand"></i> Hình ảnh món ăn</label>
+            
+            <div class="row g-3 align-items-center">
+                <div class="col-md-7">
+                    <div class="mb-2">
+                        <label asp-for="ImageFile" class="form-label small text-muted">1. Tải ảnh mới từ máy tính</label>
+                        <input asp-for="ImageFile" type="file" accept="image/*" class="form-control form-control-sm" id="imageFileInput" />
+                    </div>
+                    <div>
+                        <label asp-for="ImageUrl" class="form-label small text-muted">2. Hoặc cập nhật liên kết URL ảnh</label>
+                        <input asp-for="ImageUrl" class="form-control form-control-sm" id="imageUrlInput" />
+                    </div>
+                </div>
+                <div class="col-md-5 text-center">
+                    <div class="small text-muted mb-1">Ảnh hiện tại:</div>
+                    <img id="imagePreview" 
+                         src="@(string.IsNullOrEmpty(Model.ImageUrl) ? "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300" : Model.ImageUrl)" 
+                         class="rounded-3 shadow-sm object-fit-cover border" 
+                         style="width:120px; height:120px" 
+                         alt="Xem trước" 
+                         onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300';" />
+                </div>
+            </div>
+        </div>
+
+        <!-- CHECKBOXES -->
+        <div class="row g-3 mb-4">
+            <div class="col-sm-6">
+                <div class="form-check form-switch">
+                    <input asp-for="IsAvailable" class="form-check-input" type="checkbox" role="switch" />
+                    <label asp-for="IsAvailable" class="form-check-label fw-semibold small">Mở bán (Còn hàng)</label>
+                </div>
+            </div>
+            <div class="col-sm-6">
+                <div class="form-check form-switch">
+                    <input asp-for="IsBestSeller" class="form-check-input" type="checkbox" role="switch" />
+                    <label asp-for="IsBestSeller" class="form-check-label fw-semibold small">Gắn nhãn Món nổi bật / Best Seller</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <a asp-controller="RestaurantOwner" asp-action="Menu" class="btn btn-outline-secondary px-4 fw-semibold rounded-3">Huỷ</a>
+            <button type="submit" class="btn btn-brand px-5 fw-bold rounded-3 shadow-sm">
+                <i class="fa-solid fa-floppy-disk me-1"></i> Cập nhật thay đổi
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const imageFileInput = document.getElementById('imageFileInput');
+        const imageUrlInput = document.getElementById('imageUrlInput');
+        const imagePreview = document.getElementById('imagePreview');
+
+        imageFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    imagePreview.src = evt.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        imageUrlInput.addEventListener('input', function(e) {
+            if (e.target.value) {
+                imagePreview.src = e.target.value;
+            }
+        });
+    </script>
+}

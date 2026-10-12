@@ -1,0 +1,226 @@
+@model baitaplontmdtwebdatdoan.Models.SearchViewModel
+@{
+    ViewData["Title"] = string.IsNullOrEmpty(Model.Query) ? "Tìm kiếm món ăn & nhà hàng" : "Kết quả tìm kiếm cho: " + Model.Query;
+    var currentType = Model.Type ?? "all";
+}
+
+<!-- HEADER SEARCH SUMMARY -->
+<div class="bg-white rounded-4 shadow-sm p-4 mb-4">
+    <div class="row align-items-center g-3">
+        <div class="col-md-7">
+            <h4 class="fw-bold mb-1">
+                <i class="fa-solid fa-magnifying-glass text-brand me-2"></i>
+                @if (string.IsNullOrWhiteSpace(Model.Query))
+                {
+                    <span>Tất cả món ăn & Nhà hàng</span>
+                }
+                else
+                {
+                    <span>Kết quả tìm kiếm: "<span class="text-brand">@Model.Query</span>"</span>
+                }
+            </h4>
+            <div class="text-muted small">
+                Tìm thấy <strong>@Model.TotalItemMatches</strong> món ăn và <strong>@Model.TotalRestaurantMatches</strong> quán ăn phù hợp.
+            </div>
+        </div>
+        <div class="col-md-5">
+            <!-- Inline refinement search -->
+            <form asp-controller="Home" asp-action="Search" method="get" class="d-flex gap-2">
+                <input type="text" name="q" value="@Model.Query" class="form-control rounded-3" placeholder="Nhập từ khoá mới..." />
+                <button type="submit" class="btn btn-brand px-3 fw-bold rounded-3">Tìm</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- SIDEBAR BỘ LỌC -->
+    <div class="col-lg-3">
+        <div class="bg-white rounded-4 p-4 shadow-sm sticky-top" style="top:90px">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0"><i class="fa-solid fa-filter me-2 text-brand"></i>Bộ lọc tìm kiếm</h6>
+                @if (!string.IsNullOrEmpty(Model.Category) || Model.MinPrice.HasValue || Model.MaxPrice.HasValue || !string.IsNullOrEmpty(Model.Sort))
+                {
+                    <a asp-controller="Home" asp-action="Search" asp-route-q="@Model.Query" class="small text-danger text-decoration-none">Xoá lọc</a>
+                }
+            </div>
+
+            <form asp-controller="Home" asp-action="Search" method="get">
+                <input type="hidden" name="q" value="@Model.Query" />
+                <input type="hidden" name="type" value="@currentType" />
+
+                <!-- DANH MỤC -->
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-muted text-uppercase">Danh mục</label>
+                    <select name="category" class="form-select form-select-sm rounded-3">
+                        <option value="">-- Tất cả danh mục --</option>
+                        @foreach (var cat in Model.AllCategories)
+                        {
+                            <option value="@cat" selected="@(Model.Category == cat)">@cat</option>
+                        }
+                    </select>
+                </div>
+
+                <!-- KHOẢNG GIÁ -->
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-muted text-uppercase">Khoảng giá</label>
+                    <div class="d-flex flex-column gap-2 small">
+                        <label class="d-flex align-items-center gap-2">
+                            <input type="radio" name="priceRange" class="price-radio" data-min="" data-max="" checked="@(!Model.MinPrice.HasValue && !Model.MaxPrice.HasValue)" />
+                            Tất cả mức giá
+                        </label>
+                        <label class="d-flex align-items-center gap-2">
+                            <input type="radio" name="priceRange" class="price-radio" data-min="0" data-max="35000" checked="@(Model.MaxPrice == 35000)" />
+                            Dưới 35.000đ
+                        </label>
+                        <label class="d-flex align-items-center gap-2">
+                            <input type="radio" name="priceRange" class="price-radio" data-min="35000" data-max="70000" checked="@(Model.MinPrice == 35000 && Model.MaxPrice == 70000)" />
+                            35.000đ - 70.000đ
+                        </label>
+                        <label class="d-flex align-items-center gap-2">
+                            <input type="radio" name="priceRange" class="price-radio" data-min="70000" data-max="" checked="@(Model.MinPrice == 70000 && !Model.MaxPrice.HasValue)" />
+                            Trên 70.000đ
+                        </label>
+                    </div>
+                    <input type="hidden" name="minPrice" id="minPriceInput" value="@Model.MinPrice" />
+                    <input type="hidden" name="maxPrice" id="maxPriceInput" value="@Model.MaxPrice" />
+                </div>
+
+                <!-- SẮP XẾP -->
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-muted text-uppercase">Sắp xếp theo</label>
+                    <select name="sort" class="form-select form-select-sm rounded-3">
+                        <option value="" selected="@(string.IsNullOrEmpty(Model.Sort))">Bán chạy / Nổi bật</option>
+                        <option value="price_asc" selected="@(Model.Sort == "price_asc")">Giá: Thấp đến Cao</option>
+                        <option value="price_desc" selected="@(Model.Sort == "price_desc")">Giá: Cao đến Thấp</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-brand w-100 btn-sm fw-bold rounded-3 py-2">
+                    Áp dụng bộ lọc
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN RESULTS -->
+    <div class="col-lg-9">
+        <!-- TABS CHỌN LOẠI KẾT QUẢ -->
+        <ul class="nav nav-pills mb-4 bg-white p-2 rounded-4 shadow-sm" style="width:fit-content">
+            <li class="nav-item">
+                <a class="nav-link px-3 py-2 rounded-3 fw-semibold @(currentType == "all" ? "active bg-brand text-white" : "text-dark")" 
+                   asp-controller="Home" asp-action="Search" 
+                   asp-route-q="@Model.Query" asp-route-type="all" asp-route-category="@Model.Category" asp-route-minPrice="@Model.MinPrice" asp-route-maxPrice="@Model.MaxPrice" asp-route-sort="@Model.Sort">
+                    Tất cả (@(Model.TotalItemMatches + Model.TotalRestaurantMatches))
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link px-3 py-2 rounded-3 fw-semibold @(currentType == "items" ? "active bg-brand text-white" : "text-dark")" 
+                   asp-controller="Home" asp-action="Search" 
+                   asp-route-q="@Model.Query" asp-route-type="items" asp-route-category="@Model.Category" asp-route-minPrice="@Model.MinPrice" asp-route-maxPrice="@Model.MaxPrice" asp-route-sort="@Model.Sort">
+                    <i class="fa-solid fa-bowl-food me-1"></i> Món ăn (@Model.TotalItemMatches)
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link px-3 py-2 rounded-3 fw-semibold @(currentType == "restaurants" ? "active bg-brand text-white" : "text-dark")" 
+                   asp-controller="Home" asp-action="Search" 
+                   asp-route-q="@Model.Query" asp-route-type="restaurants" asp-route-category="@Model.Category" asp-route-minPrice="@Model.MinPrice" asp-route-maxPrice="@Model.MaxPrice" asp-route-sort="@Model.Sort">
+                    <i class="fa-solid fa-store me-1"></i> Quán ăn (@Model.TotalRestaurantMatches)
+                </a>
+            </li>
+        </ul>
+
+        @if (Model.TotalItemMatches == 0 && Model.TotalRestaurantMatches == 0)
+        {
+            <div class="bg-white rounded-4 p-5 text-center shadow-sm">
+                <i class="fa-solid fa-face-frown text-muted fs-1 mb-3 opacity-50"></i>
+                <h5 class="fw-bold">Rất tiếc, không tìm thấy kết quả phù hợp!</h5>
+                <p class="text-muted small mb-4">Bạn vui lòng thử lại với từ khoá khác hoặc giảm bớt tiêu chí lọc.</p>
+                
+                <div class="d-flex justify-content-center flex-wrap gap-2">
+                    <span class="text-muted small align-self-center">Gợi ý từ khoá:</span>
+                    <a asp-controller="Home" asp-action="Search" asp-route-q="Cơm" class="badge bg-light text-dark border p-2 text-decoration-none">Cơm tấm</a>
+                    <a asp-controller="Home" asp-action="Search" asp-route-q="Trà sữa" class="badge bg-light text-dark border p-2 text-decoration-none">Trà sữa</a>
+                    <a asp-controller="Home" asp-action="Search" asp-route-q="Bún" class="badge bg-light text-dark border p-2 text-decoration-none">Bún bò</a>
+                    <a asp-controller="Home" asp-action="Search" asp-route-q="Bánh mì" class="badge bg-light text-dark border p-2 text-decoration-none">Bánh mì</a>
+                </div>
+            </div>
+        }
+
+        <!-- PHẦN MÓN ĂN -->
+        @if ((currentType == "all" || currentType == "items") && Model.MenuItems.Any())
+        {
+            <div class="mb-5">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0">🍔 Món ăn (@Model.TotalItemMatches)</h5>
+                </div>
+                <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
+                    @foreach (var item in Model.MenuItems)
+                    {
+                        <div class="col">
+                            <partial name="_MenuItemCard" model="item" />
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- PHẦN NHÀ HÀNG -->
+        @if ((currentType == "all" || currentType == "restaurants") && Model.Restaurants.Any())
+        {
+            <div class="mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0">🏪 Quán ăn & Nhà hàng (@Model.TotalRestaurantMatches)</h5>
+                </div>
+                <div class="row row-cols-1 row-cols-md-2 g-3">
+                    @foreach (var r in Model.Restaurants)
+                    {
+                        <div class="col">
+                            <div class="bg-white rounded-4 shadow-sm p-3 h-100 d-flex flex-column justify-content-between hover-shadow transition">
+                                <div class="d-flex gap-3">
+                                    <img src="@(string.IsNullOrEmpty(r.LogoUrl) ? "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200" : r.LogoUrl)" 
+                                         class="rounded-3 object-fit-cover shadow-sm" 
+                                         style="width:85px; height:85px" 
+                                         alt="@r.Name" 
+                                         onerror="this.src='https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200';" />
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <h6 class="fw-bold text-dark text-truncate mb-1">@r.Name</h6>
+                                        <div class="text-muted small text-truncate mb-1">
+                                            <i class="fa-solid fa-location-dot text-danger me-1"></i>@r.Address
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2 small">
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fa-solid fa-star text-dark me-1"></i>@(r.AvgRating > 0 ? r.AvgRating.ToString("0.0") : "5.0")
+                                            </span>
+                                            <span class="text-muted">(@(r.TotalReviews) đánh giá)</span>
+                                            <span class="text-muted">• <i class="fa-regular fa-clock me-1"></i>@r.PrepTimeMinutes phút</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="border-top pt-2 mt-3 d-flex justify-content-between align-items-center">
+                                    <span class="small text-muted">Đơn tối thiểu: <strong>@r.MinOrderAmount.ToString("N0")đ</strong></span>
+                                    <a asp-controller="Restaurant" asp-action="Details" asp-route-id="@r.Id" class="btn btn-sm btn-outline-brand fw-bold rounded-pill px-3">
+                                        Xem quán <i class="fa-solid fa-arrow-right ms-1"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.price-radio').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                if (this.checked) {
+                    document.getElementById('minPriceInput').value = this.dataset.min || '';
+                    document.getElementById('maxPriceInput').value = this.dataset.max || '';
+                }
+            });
+        });
+    </script>
+}

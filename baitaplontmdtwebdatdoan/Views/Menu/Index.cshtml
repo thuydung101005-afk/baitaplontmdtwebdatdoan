@@ -1,0 +1,40 @@
+@model baitaplontmdtwebdatdoan.Models.MenuIndexViewModel
+@{
+    ViewData["Title"] = "Danh mục món ăn";
+}
+<h4 class="fw-bold mb-4"><i class="fa-solid fa-border-all text-brand me-2"></i>DANH MỤC MÓN ĂN</h4>
+
+<!-- Thanh lọc danh mục -->
+<div class="d-flex gap-2 mb-4 flex-wrap bg-white p-3 rounded-4 shadow-sm">
+    <a asp-controller="Menu" asp-action="Index"
+       class="btn btn-sm rounded-pill px-3 fw-semibold @(Model.SelectedCategory == null ? "btn-brand" : "btn-outline-secondary")">
+        Tất cả món
+    </a>
+    @foreach (var cat in Model.AllCategories)
+    {
+        <a asp-controller="Menu" asp-action="Index" asp-route-category="@cat"
+           class="btn btn-sm rounded-pill px-3 fw-semibold @(Model.SelectedCategory == cat ? "btn-brand" : "btn-outline-secondary")">
+            @cat
+        </a>
+    }
+</div>
+
+@if (!Model.Items.Any())
+{
+    <div class="bg-white rounded-4 p-5 text-center shadow-sm">
+        <i class="fa-solid fa-bowl-food text-muted fs-1 mb-3 opacity-50"></i>
+        <h6 class="fw-bold text-muted">Không có món ăn nào trong danh mục này.</h6>
+        <a asp-controller="Menu" asp-action="Index" class="btn btn-brand btn-sm fw-bold mt-2">Xem tất cả món</a>
+    </div>
+}
+else
+{
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-3">
+        @foreach (var item in Model.Items)
+        {
+            <div class="col">
+                @await Html.PartialAsync("_MenuItemCard", item)
+            </div>
+        }
+    </div>
+}

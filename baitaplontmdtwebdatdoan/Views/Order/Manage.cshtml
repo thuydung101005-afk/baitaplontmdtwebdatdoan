@@ -1,0 +1,40 @@
+@model List<baitaplontmdtwebdatdoan.Models.Order>
+@{
+    ViewData["Title"] = "Quản lý đơn hàng (demo)"; Layout = null;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+</head>
+<body class="p-4">
+    <h4 class="fw-bold mb-3">🍳 Trang giả lập Nhà hàng - Cập nhật trạng thái đơn</h4>
+
+    @foreach (var o in Model)
+    {
+        <div class="card mb-2 p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>#@o.OrderCode</strong> — @o.TotalAmount.ToString("N0")đ
+                    <span class="badge bg-secondary ms-2">@o.OrderStatus</span>
+                </div>
+                <form asp-controller="Order" asp-action="UpdateStatus" method="post" class="d-flex gap-2">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@o.Id" />
+                    <select name="newStatus" class="form-select form-select-sm">
+                        <option value="pending">Chờ xác nhận</option>
+                        <option value="confirmed">Đã xác nhận</option>
+                        <option value="preparing">Đang chuẩn bị</option>
+                        <option value="ready_for_pickup">Sẵn sàng giao</option>
+                        <option value="delivering">Đang giao</option>
+                        <option value="completed">Hoàn thành</option>
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-brand">Cập nhật</button>
+                </form>
+            </div>
+        </div>
+    }
+</body>
+</html>

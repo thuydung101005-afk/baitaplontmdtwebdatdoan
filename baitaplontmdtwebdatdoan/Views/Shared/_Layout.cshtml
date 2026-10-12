@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Foodie</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <!-- ===== HEADER ===== -->
+    <nav class="navbar navbar-expand-lg bg-white shadow-sm sticky-top py-3">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="/">
+                <i class="fa-solid fa-utensils fs-3 text-brand"></i>
+                <div>
+                    <div class="fw-bold text-brand fs-5 lh-1">Foodie</div>
+                    <div class="text-muted" style="font-size:11px">Ngon mỗi ngày!</div>
+                </div>
+            </a>
+
+            <form asp-controller="Home" asp-action="Search" method="get" class="input-group mx-3" style="max-width:380px">
+                <button type="submit" class="input-group-text bg-light border-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></button>
+                <input type="text" name="q" value="@Context.Request.Query["q"]" class="form-control bg-light border-0" placeholder="Tìm món ăn, nhà hàng..." />
+            </form>
+
+            <div class="d-flex align-items-center gap-3 ms-auto">
+                <div class="d-none d-lg-flex align-items-center gap-2">
+                    <i class="fa-solid fa-location-dot text-brand"></i>
+                    <div>
+                        <div class="text-muted" style="font-size:11px">Giao đến:</div>
+                        <div class="fw-semibold" style="font-size:13px">Chưa chọn địa chỉ <i class="fa-solid fa-chevron-down small"></i></div>
+                    </div>
+                </div>
+
+                <a asp-controller="Cart" asp-action="Index" id="cartIcon" class="position-relative d-flex align-items-center gap-2 bg-light rounded-3 px-3 py-2 text-decoration-none">
+                    <i class="fa-solid fa-cart-shopping text-dark"></i>
+                    <span class="small text-dark">Giỏ hàng</span>
+                    <span id="cartCountBadge" class="badge bg-brand rounded-pill position-absolute top-0 start-100 translate-middle" style="display:none">0</span>
+                </a>
+
+                <button class="btn btn-light rounded-circle"><i class="fa-regular fa-bell"></i></button>
+
+                @if (User.Identity != null && User.Identity.IsAuthenticated)
+                {
+                    <div class="dropdown">
+                        <div class="d-flex align-items-center gap-2" role="button" data-bs-toggle="dropdown">
+                            <img src="https://ui-avatars.com/api/?name=@User.Identity.Name&background=FF7A00&color=fff" class="rounded-circle" width="38" height="38" alt="avatar" />
+                            <div class="d-none d-md-block">
+                                <div class="text-muted" style="font-size:11px">Xin chào,</div>
+                                <div class="fw-bold" style="font-size:13px">@User.Identity.Name</div>
+                            </div>
+                        </div>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            @if (User.IsInRole("admin"))
+                            {
+                                <li>
+                                    <a class="dropdown-item" asp-controller="Admin" asp-action="Index">
+                                        <i class="fa-solid fa-shield-halved me-2"></i>Quản trị hệ thống
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider" /></li>
+                            }
+                            @if (User.IsInRole("restaurant_owner"))
+                            {
+                                <li>
+                                    <a class="dropdown-item" asp-controller="RestaurantOwner" asp-action="Orders">
+                                        <i class="fa-solid fa-receipt me-2"></i>Quản lý đơn hàng
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" asp-controller="RestaurantOwner" asp-action="Menu">
+                                        <i class="fa-solid fa-utensils me-2"></i>Quản lý thực đơn
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" asp-controller="RestaurantOwner" asp-action="Revenue">
+                                        <i class="fa-solid fa-chart-line me-2 text-success"></i>Doanh thu & Hoa hồng
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" asp-controller="Chat" asp-action="ShopInbox">
+                                        <i class="fa-regular fa-comments me-2 text-primary"></i>Tin nhắn khách hàng
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider" /></li>
+                            }
+                            <li>
+                                <form asp-controller="Account" asp-action="Logout" method="post">
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                }
+                else
+                {
+                    <a asp-controller="Account" asp-action="Login" class="btn btn-outline-brand btn-sm fw-bold">Đăng nhập</a>
+                    <a asp-controller="Account" asp-action="Register" class="btn btn-brand btn-sm fw-bold">Đăng ký</a>
+                }
+            </div>
+        </div>
+    </nav>
+
+    <!-- ===== BODY ===== -->
+    <div class="container-fluid px-4 mt-4">
+        <div class="row g-4">
+            <!-- SIDEBAR -->
+            <aside class="col-lg-3 col-xl-2">
+                <div class="bg-white rounded-4 p-3 shadow-sm">
+                    <div class="nav flex-column gap-1">
+                        @{
+                            var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+                        }
+                        <a class="nav-link fw-semibold rounded-3 px-3 py-2 @(currentController == "Home" ? "active-nav" : "text-dark")" asp-controller="Home" asp-action="Index"><i class="fa-solid fa-house me-2"></i>Trang chủ</a>
+                        <a class="nav-link fw-semibold rounded-3 px-3 py-2 @(currentController == "Menu" ? "active-nav" : "text-dark")" asp-controller="Menu" asp-action="Index"><i class="fa-solid fa-border-all me-2"></i>Danh mục món ăn</a>
+                        <a class="nav-link fw-semibold rounded-3 px-3 py-2 @(currentController == "Restaurant" ? "active-nav" : "text-dark")" asp-controller="Restaurant" asp-action="Index"><i class="fa-solid fa-store me-2"></i>Nhà hàng</a>
+                        <a class="nav-link fw-semibold rounded-3 px-3 py-2 @(currentController == "Voucher" ? "active-nav" : "text-dark")" asp-controller="Voucher" asp-action="Index"><i class="fa-solid fa-tags me-2"></i>Khuyến mãi</a>
+                        <a class="nav-link fw-semibold rounded-3 px-3 py-2 d-flex align-items-center justify-content-between @(currentController == "Favorite" ? "active-nav" : "text-dark")" asp-controller="Favorite" asp-action="Index">
+                            <span><i class="fa-solid fa-heart me-2 text-danger"></i>Yêu thích</span>
+                            <span id="favCountBadge" class="badge bg-danger rounded-pill" style="display:none;font-size:11px">0</span>
+                        </a>
+                        <a class="nav-link fw-semibold rounded-3 px-3 py-2 @(currentController == "Follow" ? "active-nav" : "text-dark")" asp-controller="Follow" asp-action="MyFollows">
+                            <i class="fa-solid fa-bell me-2 text-brand"></i>Đang theo dõi
+                        </a>
+                        <a class="nav-link fw-semibold rounded-3 px-3 py-2 @(currentController == "Order" ? "active-nav" : "text-dark")" asp-controller="Order" asp-action="MyOrders"><i class="fa-regular fa-clipboard me-2"></i>Đơn hàng của tôi</a>
+                    </div>
+                    <hr />
+                    <div class="text-muted fw-bold small mb-2">HỖ TRỢ KHÁCH HÀNG</div>
+                    <div class="small mb-2"><i class="fa-solid fa-phone text-brand me-2"></i>1900 1234</div>
+                    <div class="small mb-2"><i class="fa-regular fa-envelope text-brand me-2"></i>hotro@foodie.vn</div>
+                    <div class="small"><i class="fa-regular fa-clock text-brand me-2"></i>8:00 - 22:00 (T2 - CN)</div>
+                </div>
+            </aside>
+
+            <!-- MAIN CONTENT -->
+            <main class="col-lg-9 col-xl-10">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="bg-white border-top mt-5 py-4">
+        <div class="container-fluid px-4 d-flex flex-wrap justify-content-around gap-3">
+            <div class="d-flex align-items-center gap-2"><i class="fa-solid fa-truck-fast fs-4 text-brand"></i><div><div class="fw-bold small">Giao hàng nhanh chóng</div><div class="text-muted small">30-60 phút</div></div></div>
+            <div class="d-flex align-items-center gap-2"><i class="fa-regular fa-credit-card fs-4 text-brand"></i><div><div class="fw-bold small">Thanh toán đa dạng</div><div class="text-muted small">COD, Ví, Thẻ, Chuyển khoản</div></div></div>
+            <div class="d-flex align-items-center gap-2"><i class="fa-solid fa-rotate fs-4 text-brand"></i><div><div class="fw-bold small">Đổi trả dễ dàng</div><div class="text-muted small">Trong vòng 24h</div></div></div>
+            <div class="d-flex align-items-center gap-2"><i class="fa-regular fa-gift fs-4 text-brand"></i><div><div class="fw-bold small">Ưu đãi mỗi ngày</div><div class="text-muted small">Nhiều khuyến mãi hấp dẫn</div></div></div>
+            <div class="d-flex align-items-center gap-2"><i class="fa-solid fa-headset fs-4 text-brand"></i><div><div class="fw-bold small">Hỗ trợ 24/7</div><div class="text-muted small">1900 1234</div></div></div>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

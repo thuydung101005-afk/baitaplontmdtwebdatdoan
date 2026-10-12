@@ -1,0 +1,633 @@
+@model List<baitaplontmdtwebdatdoan.Models.CartItem>
+@{
+    ViewData["Title"] = "Thanh toán đơn hàng - Foodie";
+    var subtotal = (decimal)(ViewBag.Subtotal ?? Model.Sum(c => c.MenuItem.BasePrice * c.Quantity));
+    var shippingFee = 15000m;
+    var applicableVouchers = ViewBag.ApplicableVouchers as List<baitaplontmdtwebdatdoan.Models.Voucher> ?? new List<baitaplontmdtwebdatdoan.Models.Voucher>();
+    var restaurantId = ViewBag.RestaurantId ?? Model.FirstOrDefault()?.RestaurantId ?? 0;
+    var currentUser = ViewBag.CurrentUser as baitaplontmdtwebdatdoan.Models.User;
+    var defaultAddress = ViewBag.DefaultAddress as baitaplontmdtwebdatdoan.Models.Address;
+    var userAddresses = ViewBag.UserAddresses as List<baitaplontmdtwebdatdoan.Models.Address> ?? new List<baitaplontmdtwebdatdoan.Models.Address>();
+    var walletBalance = (decimal)(ViewBag.WalletBalance ?? 0);
+    var firstRestaurant = Model.FirstOrDefault()?.Restaurant;
+}
+
+<!-- ===== CHECKOUT STEPPER BREADCRUMB (GIỐNG SHOPEE / GRAB) ===== -->
+<div class="bg-white rounded-4 shadow-sm p-3 mb-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div class="d-flex align-items-center gap-2">
+        <a asp-controller="Cart" asp-action="Index" class="btn btn-light btn-sm rounded-circle shadow-xs" title="Quay lại giỏ hàng">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <h5 class="fw-black mb-0 text-brand d-flex align-items-center gap-2">
+            <i class="fa-solid fa-bag-shopping"></i> THANH TOÁN ĐƠN HÀNG
+        </h5>
+    </div>
+    
+    <div class="d-none d-md-flex align-items-center gap-3 small fw-semibold text-muted">
+        <span><i class="fa-solid fa-circle-check text-success me-1"></i>1. Giỏ hàng</span>
+        <i class="fa-solid fa-chevron-right text-muted small"></i>
+        <span class="text-brand fw-bold"><i class="fa-solid fa-circle-dot text-brand me-1"></i>2. Xác nhận & Thanh toán</span>
+        <i class="fa-solid fa-chevron-right text-muted small"></i>
+        <span>3. Hoàn tất đơn</span>
+    </div>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-4 shadow-sm mb-4" role="alert">
+        <i class="fa-solid fa-triangle-exclamation me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<form asp-controller="Order" asp-action="Checkout" method="post" id="checkoutForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="selectedIdsCsv" value="@string.Join(",", Model.Select(c => c.Id))" />
+    <input type="hidden" name="voucherCode" id="hiddenVoucherCode" value="" />
+    <input type="hidden" name="selectedAddressId" id="selectedAddressId" value="@(defaultAddress?.Id ?? 0)" />
+
+    <!-- 1. KHỐI ĐỊA CHỈ GIAO HÀNG (DẢI VIỀN PHONG BÌ BƯU ĐIỆN ĐẶC TRƯNG SHOPEE) -->
+    <div class="bg-white rounded-4 shadow-sm mb-4 overflow-hidden position-relative border-0">
+        <!-- Dải sọc bưu điện Shopee (Stripe ribbon) -->
+        <div class="shopee-stripe-bar"></div>
+
+        <div class="p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center gap-2 text-danger fw-bold fs-6 text-uppercase">
+                    <i class="fa-solid fa-location-dot fs-5"></i>
+                    <span>Địa chỉ nhận hàng</span>
+                </div>
+                <button type="button" class="btn btn-outline-brand btn-sm rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#addressModal">
+                    <i class="fa-solid fa-pen-to-square me-1"></i>Thay đổi địa chỉ
+                </button>
+            </div>
+
+            <div class="row align-items-center g-3" id="displayAddressBox">
+                <div class="col-md-4">
+                    <div class="fw-bold text-dark fs-6" id="dispReceiverName">
+                        @(defaultAddress?.ReceiverName ?? currentUser?.FullName ?? "Quý khách")
+                    </div>
+                    <div class="text-muted fw-semibold" id="dispReceiverPhone">
+                        @(defaultAddress?.ReceiverPhone ?? currentUser?.Phone ?? "Chưa cập nhật SĐT")
+                    </div>
+                    <span class="badge bg-danger-subtle text-danger border border-danger rounded-pill px-2 py-1 mt-1 small">
+                        Mặc định
+                    </span>
+                </div>
+                <div class="col-md-8">
+                    <div class="text-dark fw-medium" id="dispAddressLine">
+                        <i class="fa-solid fa-house-chimney text-secondary me-1"></i>
+                        @(defaultAddress?.AddressLine ?? "Vui lòng nhập địa chỉ nhận hàng chi tiết")
+                    </div>
+                    <div class="text-muted small mt-1 d-flex align-items-center gap-2">
+                        <span class="badge bg-success-subtle text-success border border-success rounded-pill px-2 py-1">
+                            <i class="fa-solid fa-bolt me-1"></i>Giao siêu tốc
+                        </span>
+                        <span>Ước tính giao đến sau <strong>20 - 30 phút</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hidden input để gửi form nếu người dùng không chọn địa chỉ có sẵn mà nhập mới -->
+            <input type="hidden" name="receiverName" id="inputReceiverName" value="@(defaultAddress?.ReceiverName ?? currentUser?.FullName ?? "")" />
+            <input type="hidden" name="receiverPhone" id="inputReceiverPhone" value="@(defaultAddress?.ReceiverPhone ?? currentUser?.Phone ?? "")" />
+            <input type="hidden" name="addressLine" id="inputAddressLine" value="@(defaultAddress?.AddressLine ?? "")" />
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- CỘT TRÁI: SHOP & DANH SÁCH MÓN & VOUCHER -->
+        <div class="col-lg-7">
+            <!-- SHOP & MÓN ĂN (KIỂU GIAN HÀNG SÀN TMĐT) -->
+            <div class="bg-white rounded-4 shadow-sm p-4 mb-4">
+                <!-- Shop Header -->
+                <div class="d-flex justify-content-between align-items-center pb-3 border-bottom mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-danger text-white rounded-pill px-2 py-1 fw-bold" style="font-size:10px">YÊU THÍCH</span>
+                        <i class="fa-solid fa-store text-brand fs-5"></i>
+                        <span class="fw-bold text-dark fs-6">@(firstRestaurant?.Name ?? "Nhà hàng Foodie")</span>
+                    </div>
+                    <a asp-controller="Restaurant" asp-action="Details" asp-route-id="@restaurantId" class="text-decoration-none text-brand small fw-semibold">
+                        Xem Menu quán <i class="fa-solid fa-chevron-right ms-1 small"></i>
+                    </a>
+                </div>
+
+                <!-- Danh sách món -->
+                <div class="list-group list-group-flush mb-3">
+                    @foreach (var item in Model)
+                    {
+                        <div class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center border-bottom-dashed">
+                            <div class="d-flex align-items-center gap-3">
+                                <img src="@(string.IsNullOrEmpty(item.MenuItem.ImageUrl) ? "https://placehold.co/100x100?text=Food" : item.MenuItem.ImageUrl)" 
+                                     class="rounded-3 object-fit-cover shadow-xs border" style="width:60px; height:60px" alt="@item.MenuItem.Name" 
+                                     onerror="this.src='https://placehold.co/100x100?text=Food';" />
+                                <div>
+                                    <div class="fw-bold text-dark mb-1">@item.MenuItem.Name</div>
+                                    <div class="text-muted small">
+                                        Đơn giá: <span class="text-dark fw-semibold">@item.MenuItem.BasePrice.ToString("N0")đ</span>
+                                        &middot; SL: <span class="badge bg-light text-dark border px-2 py-1">x@item.Quantity</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold text-dark fs-6">@((item.MenuItem.BasePrice * item.Quantity).ToString("N0"))đ</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Lời nhắn / Ghi chú cho quán & shipper -->
+                <div class="bg-light p-3 rounded-3 border">
+                    <div class="row align-items-center g-2">
+                        <div class="col-md-3">
+                            <span class="fw-bold small text-dark"><i class="fa-regular fa-comment-dots text-brand me-1"></i>Lời nhắn:</span>
+                        </div>
+                        <div class="col-md-9">
+                            <input type="text" name="note" class="form-control form-control-sm bg-white rounded-3 border" 
+                                   placeholder="Lưu ý cho quán (ít cay, không hành, xin thêm đũa...) hoặc tài xế..." />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PHẦN FOODIE VOUCHER (MÃ GIẢM GIÁ THIẾT KẾ VÉ SHOPEE VOUCHER) -->
+            <div class="bg-white rounded-4 shadow-sm p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-ticket text-brand fs-5"></i>
+                        <h6 class="fw-bold mb-0">Foodie Voucher & Ưu đãi</h6>
+                    </div>
+                    <span class="text-brand small fw-semibold cursor-pointer" data-bs-toggle="modal" data-bs-target="#voucherListModal">
+                        Xem tất cả mã <i class="fa-solid fa-chevron-right ms-1 small"></i>
+                    </span>
+                </div>
+
+                <div class="input-group mb-2">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="fa-solid fa-ticket"></i></span>
+                    <input type="text" id="voucherInput" class="form-control text-uppercase font-monospace fw-bold border-start-0" 
+                           placeholder="Nhập mã voucher (VD: FOODIE50, FREESHIP...)" />
+                    <button type="button" class="btn btn-brand fw-bold px-4" id="applyVoucherBtn">
+                        Áp dụng
+                    </button>
+                </div>
+
+                <div id="voucherMessage" class="small mt-2" style="display:none"></div>
+
+                @if (applicableVouchers.Any())
+                {
+                    <div class="mt-3 pt-3 border-top">
+                        <div class="text-muted small fw-semibold mb-2">Mã gợi ý phù hợp nhất cho đơn hàng này:</div>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var v in applicableVouchers.Take(3))
+                            {
+                                <div class="voucher-ticket-badge border rounded-3 p-2 d-flex align-items-center gap-2 cursor-pointer quick-voucher-btn" 
+                                     data-code="@v.Code" title="Bấm để áp dụng nhanh">
+                                    <div class="bg-brand-subtle text-brand fw-bold small px-2 py-1 rounded">@v.Code</div>
+                                    <div class="small text-dark fw-semibold">
+                                        @(v.DiscountType == "percent" || v.DiscountType == "percentage" ? $"Giảm {v.DiscountValue:0}%" : $"Giảm {v.DiscountValue:N0}đ")
+                                    </div>
+                                    <i class="fa-solid fa-circle-plus text-brand ms-1"></i>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- CỘT PHẢI: PHƯƠNG THỨC THANH TOÁN & TỔNG TIỀN -->
+        <div class="col-lg-5">
+            <!-- 2. PHƯƠNG THỨC THANH TOÁN (CHUẨN SÀN THƯƠNG MẠI ĐIỆN TỬ) -->
+            <div class="bg-white rounded-4 shadow-sm p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold mb-0"><i class="fa-solid fa-credit-card text-brand me-2"></i>Phương thức thanh toán</h6>
+                    <span class="badge bg-light text-muted border small">Bảo mật SSL</span>
+                </div>
+
+                <div class="d-flex flex-column gap-3">
+                    <!-- 1. COD -->
+                    <label class="payment-option-card border rounded-3 p-3 d-flex align-items-center gap-3 cursor-pointer selected-option" for="payCod">
+                        <input type="radio" name="paymentMethod" value="cod" id="payCod" class="form-check-input mt-0" checked />
+                        <div class="p-2 rounded-3 bg-success-subtle text-success fs-4 d-flex align-items-center justify-content-center" style="width:48px;height:48px">
+                            <i class="fa-solid fa-money-bill-wave"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold text-dark">Thanh toán khi nhận hàng (COD)</div>
+                            <div class="text-muted small">Thanh toán tiền mặt cho shipper khi nhận món</div>
+                        </div>
+                    </label>
+
+                    <!-- 2. VIETQR -->
+                    <label class="payment-option-card border rounded-3 p-3 d-flex align-items-center gap-3 cursor-pointer" for="payBank">
+                        <input type="radio" name="paymentMethod" value="bank_transfer" id="payBank" class="form-check-input mt-0" />
+                        <div class="p-2 rounded-3 bg-primary-subtle text-primary fs-4 d-flex align-items-center justify-content-center" style="width:48px;height:48px">
+                            <i class="fa-solid fa-qrcode"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                                <span>Chuyển khoản VietQR 24/7</span>
+                                <span class="badge bg-primary rounded-pill small">Khuyên dùng</span>
+                            </div>
+                            <div class="text-muted small">Quét mã QR qua app ngân hàng MB, VCB, Techcombank... tự động</div>
+                        </div>
+                    </label>
+
+                    <!-- 3. VÍ FOODIE -->
+                    <label class="payment-option-card border rounded-3 p-3 d-flex align-items-center gap-3 cursor-pointer @(walletBalance < (subtotal + shippingFee) ? "opacity-75" : "")" for="payWallet">
+                        <input type="radio" name="paymentMethod" value="wallet" id="payWallet" class="form-check-input mt-0" />
+                        <div class="p-2 rounded-3 bg-warning-subtle text-warning-emphasis fs-4 d-flex align-items-center justify-content-center" style="width:48px;height:48px">
+                            <i class="fa-solid fa-wallet"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                                <span>Ví Foodie Pay</span>
+                                <span class="badge bg-warning-subtle text-dark border">Số dư: @walletBalance.ToString("N0")đ</span>
+                            </div>
+                            <div class="text-muted small">
+                                @if (walletBalance >= (subtotal + shippingFee))
+                                {
+                                    <span class="text-success"><i class="fa-solid fa-check me-1"></i>Đủ số dư thanh toán ngay lập tức</span>
+                                }
+                                else
+                                {
+                                    <span class="text-danger"><i class="fa-solid fa-circle-exclamation me-1"></i>Số dư hiện tại chưa đủ</span>
+                                }
+                            </div>
+                        </div>
+                    </label>
+
+                    <!-- 4. VÍ MOMO -->
+                    <label class="payment-option-card border rounded-3 p-3 d-flex align-items-center gap-3 cursor-pointer" for="payMomo">
+                        <input type="radio" name="paymentMethod" value="momo" id="payMomo" class="form-check-input mt-0" />
+                        <div class="p-2 rounded-3 bg-danger-subtle text-danger fs-4 d-flex align-items-center justify-content-center" style="width:48px;height:48px; background-color:#A50064 !important; color:#fff !important;">
+                            <i class="fa-solid fa-mobile-screen-button"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                                <span>Ví MoMo</span>
+                                <span class="badge bg-light text-dark border small">Phổ biến</span>
+                            </div>
+                            <div class="text-muted small">Liên kết ví điện tử MoMo thanh toán 1 chạm</div>
+                        </div>
+                    </label>
+
+                    <!-- 5. VÍ ZALOPAY -->
+                    <label class="payment-option-card border rounded-3 p-3 d-flex align-items-center gap-3 cursor-pointer" for="payZalo">
+                        <input type="radio" name="paymentMethod" value="zalopay" id="payZalo" class="form-check-input mt-0" />
+                        <div class="p-2 rounded-3 text-white fs-4 d-flex align-items-center justify-content-center" style="width:48px;height:48px; background-color:#0068FF;">
+                            <i class="fa-solid fa-comment-dollar"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold text-dark">Ví ZaloPay</div>
+                            <div class="text-muted small">Thanh toán siêu tốc qua ứng dụng ZaloPay</div>
+                        </div>
+                    </label>
+
+                    <!-- 6. THẺ QUỐC TẾ -->
+                    <label class="payment-option-card border rounded-3 p-3 d-flex align-items-center gap-3 cursor-pointer" for="payCard">
+                        <input type="radio" name="paymentMethod" value="credit_card" id="payCard" class="form-check-input mt-0" />
+                        <div class="p-2 rounded-3 bg-info-subtle text-info-emphasis fs-4 d-flex align-items-center justify-content-center" style="width:48px;height:48px">
+                            <i class="fa-brands fa-cc-visa"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold text-dark">Thẻ Quốc Tế (Visa / Master / JCB)</div>
+                            <div class="text-muted small">Bảo mật chuẩn quốc tế PCI-DSS</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 3. TỔNG KẾT CHI TIẾT THANH TOÁN (ORDER SUMMARY) -->
+            <div class="bg-white rounded-4 shadow-sm p-4 mb-4">
+                <h6 class="fw-bold mb-3"><i class="fa-solid fa-receipt text-brand me-2"></i>Chi tiết thanh toán</h6>
+
+                <div class="d-flex flex-column gap-2 small">
+                    <div class="d-flex justify-content-between text-muted">
+                        <span>Tổng tiền món</span>
+                        <span class="fw-semibold text-dark">@subtotal.ToString("N0")đ</span>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted">
+                        <span>Phí vận chuyển</span>
+                        <span class="fw-semibold text-dark">@shippingFee.ToString("N0")đ</span>
+                    </div>
+                    <div class="d-flex justify-content-between text-success fw-bold" id="discountRow" style="display:none !important;">
+                        <span>Giảm giá Voucher</span>
+                        <span id="discountText">-0đ</span>
+                    </div>
+                    <hr class="my-2" />
+                    <div class="d-flex justify-content-between align-items-center pt-1">
+                        <div>
+                            <span class="fw-bold text-dark fs-5">Tổng thanh toán:</span>
+                            <div class="text-muted" style="font-size:11px">Đã bao gồm VAT nếu có</div>
+                        </div>
+                        <div class="text-end">
+                            <span class="text-brand fw-black fs-3" id="totalAmountText">@((subtotal + shippingFee).ToString("N0"))đ</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NÚT ĐẶT HÀNG LỚN -->
+                <button type="submit" class="btn btn-brand w-100 fw-bold py-3 fs-5 rounded-4 shadow-sm mt-4 text-uppercase letter-spacing-1" id="btnSubmitOrder">
+                    <i class="fa-solid fa-bag-shopping me-2"></i> ĐẶT HÀNG NGAY
+                </button>
+
+                <div class="text-center text-muted small mt-3" style="font-size:12px">
+                    <i class="fa-solid fa-shield-halved text-success me-1"></i>
+                    Nhấn "Đặt hàng" đồng nghĩa với việc bạn đồng ý tuân theo <a href="#" class="text-brand text-decoration-none">Điều khoản Foodie</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- ===== MODAL CHỌN / THAY ĐỔI ĐỊA CHỈ GIAO HÀNG ===== -->
+<div class="modal fade" id="addressModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom pb-3">
+                <h5 class="modal-title fw-bold text-dark">
+                    <i class="fa-solid fa-location-dot text-danger me-2"></i>Địa chỉ nhận hàng của bạn
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                @if (userAddresses.Any())
+                {
+                    <h6 class="fw-bold small text-muted mb-3 text-uppercase">Chọn từ địa chỉ đã lưu:</h6>
+                    <div class="d-flex flex-column gap-2 mb-4">
+                        @foreach (var addr in userAddresses)
+                        {
+                            <div class="border rounded-3 p-3 address-select-item cursor-pointer @(addr.Id == defaultAddress?.Id ? "border-brand bg-brand-subtle" : "")"
+                                 onclick="selectSavedAddress('@addr.Id', '@addr.ReceiverName', '@addr.ReceiverPhone', '@addr.AddressLine')">
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <span class="fw-bold text-dark">@addr.ReceiverName</span>
+                                    @if (addr.IsDefault)
+                                    {
+                                        <span class="badge bg-danger rounded-pill small">Mặc định</span>
+                                    }
+                                </div>
+                                <div class="text-muted small mb-1"><i class="fa-solid fa-phone me-1"></i>@addr.ReceiverPhone</div>
+                                <div class="small text-dark"><i class="fa-solid fa-house me-1 text-secondary"></i>@addr.AddressLine</div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <h6 class="fw-bold small text-muted mb-3 text-uppercase">Hoặc nhập thông tin địa chỉ mới:</h6>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Họ tên người nhận:</label>
+                    <input type="text" id="modalReceiverName" class="form-control rounded-3" placeholder="VD: Nguyễn Văn A" value="@(defaultAddress?.ReceiverName ?? currentUser?.FullName ?? "")" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Số điện thoại:</label>
+                    <input type="tel" id="modalReceiverPhone" class="form-control rounded-3" placeholder="VD: 0987654321" value="@(defaultAddress?.ReceiverPhone ?? currentUser?.Phone ?? "")" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Địa chỉ chi tiết:</label>
+                    <textarea id="modalAddressLine" class="form-control rounded-3" rows="2" placeholder="Số nhà, đường, phường, quận/huyện...">@(defaultAddress?.AddressLine ?? "")</textarea>
+                </div>
+                <button type="button" class="btn btn-brand w-100 fw-bold py-2 rounded-3" onclick="applyCustomAddress()">
+                    Xác nhận địa chỉ này
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL DANH SÁCH TẤT CẢ VOUCHER (SHOPEE STYLE VOUCHER MODAL) ===== -->
+<div class="modal fade" id="voucherListModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold text-dark">
+                    <i class="fa-solid fa-ticket text-brand me-2"></i>Chọn Foodie Voucher
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                @if (!applicableVouchers.Any())
+                {
+                    <div class="text-center py-4 text-muted">
+                        <i class="fa-solid fa-ticket fs-1 mb-2 opacity-50"></i>
+                        <p class="mb-0">Hiện tại chưa có mã giảm giá nào phù hợp cho đơn hàng này.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex flex-column gap-3">
+                        @foreach (var v in applicableVouchers)
+                        {
+                            <div class="bg-white rounded-3 border p-3 d-flex justify-content-between align-items-center shadow-xs">
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="badge bg-danger text-white font-monospace fw-bold">@v.Code</span>
+                                        <span class="fw-bold text-dark">
+                                            @(v.DiscountType == "percent" || v.DiscountType == "percentage" ? $"Giảm {v.DiscountValue:0}%" : $"Giảm {v.DiscountValue:N0}đ")
+                                        </span>
+                                    </div>
+                                    <div class="text-muted small">Đơn tối thiểu: @v.MinOrderAmount.ToString("N0")đ</div>
+                                    <div class="text-muted" style="font-size:11px">HSD: @v.EndDate.ToString("dd/MM/yyyy")</div>
+                                </div>
+                                <button type="button" class="btn btn-outline-brand btn-sm fw-bold rounded-pill px-3 apply-modal-voucher-btn" 
+                                        data-code="@v.Code" data-bs-dismiss="modal">
+                                    Dùng ngay
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Dải viền bưu điện Shopee */
+    .shopee-stripe-bar {
+        height: 4px;
+        width: 100%;
+        background-position-x: -30px;
+        background-size: 116px 4px;
+        background-image: repeating-linear-gradient(45deg,#6fa6d6,#6fa6d6 33px,transparent 0,transparent 41px,#f18d9b 0,#f18d9b 74px,transparent 0,transparent 82px);
+    }
+
+    .payment-option-card {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .payment-option-card:hover {
+        border-color: #FF7A00 !important;
+        background-color: #FFF9F5;
+    }
+    .payment-option-card.selected-option {
+        border-color: #FF7A00 !important;
+        background-color: #FFF6EE;
+        box-shadow: 0 0 0 2px rgba(255, 122, 0, 0.25);
+    }
+
+    .voucher-ticket-badge {
+        background: #fff;
+        transition: all 0.2s ease;
+    }
+    .voucher-ticket-badge:hover {
+        border-color: #FF7A00 !important;
+        transform: translateY(-2px);
+    }
+
+    .border-bottom-dashed {
+        border-bottom: 1px dashed #e9ecef;
+    }
+
+    .address-select-item {
+        transition: all 0.2s ease;
+    }
+    .address-select-item:hover {
+        border-color: #FF7A00 !important;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        const subtotal = @subtotal;
+        const shippingFee = @shippingFee;
+        const restaurantId = @restaurantId;
+
+        const voucherInput = document.getElementById('voucherInput');
+        const applyBtn = document.getElementById('applyVoucherBtn');
+        const voucherMsg = document.getElementById('voucherMessage');
+        const hiddenVoucher = document.getElementById('hiddenVoucherCode');
+        const discountRow = document.getElementById('discountRow');
+        const discountText = document.getElementById('discountText');
+        const totalText = document.getElementById('totalAmountText');
+
+        // Hiệu ứng chọn radio thanh toán
+        document.querySelectorAll('input[name="paymentMethod"]').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                document.querySelectorAll('.payment-option-card').forEach(function(c) {
+                    c.classList.remove('selected-option');
+                });
+                if (this.checked) {
+                    this.closest('.payment-option-card').classList.add('selected-option');
+                }
+            });
+        });
+
+        // Áp dụng voucher qua AJAX
+        function applyVoucher(code) {
+            if (!code || code.trim() === '') {
+                voucherMsg.innerHTML = '<span class="text-danger"><i class="fa-solid fa-circle-exclamation me-1"></i>Vui lòng nhập mã giảm giá.</span>';
+                voucherMsg.style.display = 'block';
+                return;
+            }
+
+            applyBtn.disabled = true;
+            applyBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang kiểm tra...';
+
+            $.ajax({
+                url: '/Voucher/ValidateVoucher',
+                type: 'POST',
+                data: {
+                    code: code,
+                    subtotal: subtotal,
+                    restaurantId: restaurantId
+                },
+                success: function(res) {
+                    applyBtn.disabled = false;
+                    applyBtn.innerHTML = 'Áp dụng';
+                    voucherMsg.style.display = 'block';
+
+                    if (res.success) {
+                        voucherMsg.innerHTML = `<span class="text-success fw-bold"><i class="fa-solid fa-circle-check me-1"></i>${res.message}</span>`;
+                        hiddenVoucher.value = res.code;
+                        voucherInput.value = res.code;
+
+                        // Hiện dòng giảm giá
+                        discountRow.style.setProperty('display', 'flex', 'important');
+                        discountText.innerText = `-${Number(res.discount).toLocaleString('vi-VN')}đ`;
+
+                        // Tính lại tổng
+                        const newTotal = Math.max(0, subtotal + shippingFee - res.discount);
+                        totalText.innerText = `${newTotal.toLocaleString('vi-VN')}đ`;
+                    } else {
+                        voucherMsg.innerHTML = `<span class="text-danger"><i class="fa-solid fa-circle-xmark me-1"></i>${res.message}</span>`;
+                        hiddenVoucher.value = '';
+                        discountRow.style.setProperty('display', 'none', 'important');
+                        const normalTotal = subtotal + shippingFee;
+                        totalText.innerText = `${normalTotal.toLocaleString('vi-VN')}đ`;
+                    }
+                },
+                error: function() {
+                    applyBtn.disabled = false;
+                    applyBtn.innerHTML = 'Áp dụng';
+                    voucherMsg.style.display = 'block';
+                    voucherMsg.innerHTML = '<span class="text-danger">Không thể kiểm tra mã giảm giá lúc này. Vui lòng thử lại.</span>';
+                }
+            });
+        }
+
+        applyBtn.addEventListener('click', function() {
+            applyVoucher(voucherInput.value);
+        });
+
+        voucherInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                applyVoucher(voucherInput.value);
+            }
+        });
+
+        document.querySelectorAll('.quick-voucher-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const code = this.getAttribute('data-code');
+                voucherInput.value = code;
+                applyVoucher(code);
+            });
+        });
+
+        document.querySelectorAll('.apply-modal-voucher-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const code = this.getAttribute('data-code');
+                voucherInput.value = code;
+                applyVoucher(code);
+            });
+        });
+
+        // Xử lý chọn địa chỉ từ modal
+        function selectSavedAddress(id, name, phone, line) {
+            document.getElementById('selectedAddressId').value = id;
+            document.getElementById('dispReceiverName').innerText = name;
+            document.getElementById('dispReceiverPhone').innerText = phone;
+            document.getElementById('dispAddressLine').innerHTML = '<i class="fa-solid fa-house-chimney text-secondary me-1"></i>' + line;
+
+            document.getElementById('inputReceiverName').value = name;
+            document.getElementById('inputReceiverPhone').value = phone;
+            document.getElementById('inputAddressLine').value = line;
+
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addressModal'));
+            if (modal) modal.hide();
+        }
+
+        function applyCustomAddress() {
+            const name = document.getElementById('modalReceiverName').value.trim();
+            const phone = document.getElementById('modalReceiverPhone').value.trim();
+            const line = document.getElementById('modalAddressLine').value.trim();
+
+            if (!name || !phone || !line) {
+                alert('Vui lòng nhập đầy đủ họ tên, số điện thoại và địa chỉ giao hàng.');
+                return;
+            }
+
+            document.getElementById('selectedAddressId').value = '0';
+            document.getElementById('dispReceiverName').innerText = name;
+            document.getElementById('dispReceiverPhone').innerText = phone;
+            document.getElementById('dispAddressLine').innerHTML = '<i class="fa-solid fa-house-chimney text-secondary me-1"></i>' + line;
+
+            document.getElementById('inputReceiverName').value = name;
+            document.getElementById('inputReceiverPhone').value = phone;
+            document.getElementById('inputAddressLine').value = line;
+
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addressModal'));
+            if (modal) modal.hide();
+        }
+    </script>
+}

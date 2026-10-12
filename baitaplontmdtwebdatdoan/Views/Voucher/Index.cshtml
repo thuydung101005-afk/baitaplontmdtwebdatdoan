@@ -1,0 +1,117 @@
+@model List<baitaplontmdtwebdatdoan.Models.Voucher>
+@{
+    ViewData["Title"] = "Mã giảm giá & Khuyến mãi";
+}
+
+<div class="bg-gradient-brand text-white rounded-4 p-4 p-md-5 mb-4 shadow-sm" style="background: linear-gradient(135deg, #FF7A00 0%, #FF4D00 100%);">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <span class="badge bg-white text-brand fw-bold mb-2 px-3 py-1 rounded-pill">Ưu đãi hôm nay</span>
+            <h2 class="fw-bold mb-2">Kho Mã Giảm Giá Foodie 🎉</h2>
+            <p class="mb-0 opacity-90">Thu thập voucher giảm giá, freeship hấp dẫn để tiết kiệm tối đa cho mọi bữa ăn ngon của bạn!</p>
+        </div>
+        <div class="col-md-4 text-center text-md-end mt-3 mt-md-0">
+            <i class="fa-solid fa-tags display-3 opacity-50"></i>
+        </div>
+    </div>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="bg-white rounded-4 p-5 text-center shadow-sm">
+        <i class="fa-solid fa-ticket text-muted fs-1 mb-3 opacity-50"></i>
+        <h5 class="fw-bold">Hiện chưa có mã giảm giá nào mới</h5>
+        <p class="text-muted small">Hãy quay lại sau để săn những deal hot nhất bạn nhé!</p>
+        <a asp-controller="Home" asp-action="Index" class="btn btn-brand btn-sm fw-bold">Khám phá món ngon</a>
+    </div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-2 g-4">
+        @foreach (var v in Model)
+        {
+            <div class="col">
+                <div class="bg-white rounded-4 shadow-sm p-4 h-100 d-flex flex-column justify-content-between position-relative border border-light-subtle overflow-hidden">
+                    <!-- Decor cut-out coupon effect -->
+                    <div style="position:absolute; left:-12px; top:50%; width:24px; height:24px; background:#f8f9fa; border-radius:50%; transform:translateY(-50%); border:1px solid #e9ecef;"></div>
+                    <div style="position:absolute; right:-12px; top:50%; width:24px; height:24px; background:#f8f9fa; border-radius:50%; transform:translateY(-50%); border:1px solid #e9ecef;"></div>
+
+                    <div>
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold px-2 py-1 rounded-pill">
+                                    @if (v.DiscountType == "percent" || v.DiscountType == "percentage")
+                                    {
+                                        <span>GIẢM @v.DiscountValue.ToString("0")%</span>
+                                    }
+                                    else
+                                    {
+                                        <span>GIẢM @v.DiscountValue.ToString("N0")đ</span>
+                                    }
+                                </span>
+                                @if (v.Restaurant != null)
+                                {
+                                    <span class="badge bg-light text-dark border ms-1">@v.Restaurant.Name</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning-subtle text-dark border ms-1">Toàn sàn</span>
+                                }
+                            </div>
+                            <span class="text-muted small"><i class="fa-regular fa-clock me-1"></i>HSD: @v.EndDate.ToString("dd/MM/yyyy")</span>
+                        </div>
+
+                        <h5 class="fw-bold text-dark mt-2 mb-1">Mã: <span class="text-brand">@v.Code</span></h5>
+                        <p class="text-muted small mb-2">@v.Description</p>
+                        
+                        <div class="small text-muted bg-light rounded-3 p-2 mb-3">
+                            <div>• Đơn tối thiểu: <strong>@v.MinOrderAmount.ToString("N0")đ</strong></div>
+                            @if (v.MaxDiscount.HasValue)
+                            {
+                                <div>• Mức giảm tối đa: <strong>@v.MaxDiscount.Value.ToString("N0")đ</strong></div>
+                            }
+                            <div>• Mỗi tài khoản được dùng tối đa <strong>@v.UsageLimitPerUser lần</strong></div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 align-items-center">
+                        <button type="button" class="btn btn-outline-brand flex-fill fw-bold copy-voucher-btn" data-code="@v.Code">
+                            <i class="fa-regular fa-copy me-1"></i> Sao chép mã
+                        </button>
+                        <a asp-controller="Home" asp-action="Index" class="btn btn-brand flex-fill fw-bold">
+                            Dùng ngay
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<!-- TOAST THÔNG BÁO COPY THÀNH CÔNG -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+    <div id="copyToast" class="toast align-items-center text-white bg-dark border-0 rounded-3 shadow" role="alert">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fa-solid fa-circle-check text-success me-2"></i> Đã sao chép mã <strong id="copiedCodeText"></strong> vào khay nhớ tạm!
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.copy-voucher-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const code = this.getAttribute('data-code');
+                navigator.clipboard.writeText(code).then(() => {
+                    document.getElementById('copiedCodeText').innerText = code;
+                    const toastEl = document.getElementById('copyToast');
+                    const toast = new bootstrap.Toast(toastEl, { delay: 2500 });
+                    toast.show();
+                });
+            });
+        });
+    </script>
+}

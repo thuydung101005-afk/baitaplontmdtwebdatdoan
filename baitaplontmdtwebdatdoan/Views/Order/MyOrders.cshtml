@@ -1,0 +1,169 @@
+@model List<baitaplontmdtwebdatdoan.Models.Order>
+@{
+    ViewData["Title"] = "Đơn hàng của tôi";
+    string currentStatus = ViewBag.CurrentStatus as string ?? "";
+
+    string GetStatusLabel(string status) => status switch
+    {
+        "pending" => "Chờ xác nhận",
+        "confirmed" => "Đã xác nhận",
+        "preparing" => "Đang chuẩn bị món",
+        "ready_for_pickup" => "Chờ tài xế lấy hàng",
+        "picked_up" => "Tài xế đã lấy hàng",
+        "delivering" => "Đang giao hàng",
+        "completed" => "Giao thành công",
+        "cancelled" => "Đã huỷ",
+        _ => status
+    };
+
+    string GetStatusBadgeClass(string status) => status switch
+    {
+        "pending" => "bg-warning text-dark border border-warning",
+        "confirmed" => "bg-info text-dark border border-info",
+        "preparing" => "bg-primary-subtle text-primary border border-primary",
+        "ready_for_pickup" => "bg-primary-subtle text-primary border border-primary",
+        "picked_up" => "bg-primary text-white",
+        "delivering" => "bg-primary text-white",
+        "completed" => "bg-success text-white",
+        "cancelled" => "bg-danger-subtle text-danger border border-danger",
+        _ => "bg-secondary text-white"
+    };
+
+    string GetStatusIcon(string status) => status switch
+    {
+        "pending" => "fa-clock",
+        "confirmed" => "fa-check",
+        "preparing" => "fa-fire-burner",
+        "ready_for_pickup" => "fa-box",
+        "delivering" => "fa-truck-fast",
+        "completed" => "fa-circle-check",
+        "cancelled" => "fa-circle-xmark",
+        _ => "fa-receipt"
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0"><i class="fa-regular fa-clipboard text-brand me-2"></i>ĐƠN HÀNG CỦA TÔI</h4>
+</div>
+
+<!-- TABS LỌC TRẠNG THÁI -->
+<ul class="nav nav-pills mb-4 bg-white p-2 rounded-4 shadow-sm overflow-auto flex-nowrap" style="width:100%">
+    <li class="nav-item flex-shrink-0">
+        <a class="nav-link px-3 py-2 rounded-3 fw-semibold @(string.IsNullOrEmpty(currentStatus) ? "active bg-brand text-white" : "text-dark")" 
+           asp-controller="Order" asp-action="MyOrders">
+            Tất cả
+        </a>
+    </li>
+    <li class="nav-item flex-shrink-0">
+        <a class="nav-link px-3 py-2 rounded-3 fw-semibold @(currentStatus == "processing" ? "active bg-brand text-white" : "text-dark")" 
+           asp-controller="Order" asp-action="MyOrders" asp-route-status="processing">
+            Đang xử lý
+        </a>
+    </li>
+    <li class="nav-item flex-shrink-0">
+        <a class="nav-link px-3 py-2 rounded-3 fw-semibold @(currentStatus == "shipping" ? "active bg-brand text-white" : "text-dark")" 
+           asp-controller="Order" asp-action="MyOrders" asp-route-status="shipping">
+            Đang giao
+        </a>
+    </li>
+    <li class="nav-item flex-shrink-0">
+        <a class="nav-link px-3 py-2 rounded-3 fw-semibold @(currentStatus == "completed" ? "active bg-brand text-white" : "text-dark")" 
+           asp-controller="Order" asp-action="MyOrders" asp-route-status="completed">
+            Đã hoàn thành
+        </a>
+    </li>
+    <li class="nav-item flex-shrink-0">
+        <a class="nav-link px-3 py-2 rounded-3 fw-semibold @(currentStatus == "cancelled" ? "active bg-brand text-white" : "text-dark")" 
+           asp-controller="Order" asp-action="MyOrders" asp-route-status="cancelled">
+            Đã huỷ
+        </a>
+    </li>
+</ul>
+
+@if (!Model.Any())
+{
+    <div class="bg-white rounded-4 p-5 text-center shadow-sm">
+        <i class="fa-regular fa-clipboard text-muted fs-1 mb-3 opacity-50"></i>
+        <h5 class="fw-bold">Chưa có đơn hàng nào trong mục này</h5>
+        <p class="text-muted small mb-4">Các món ngon nóng hổi đang chờ bạn khám phá và thưởng thức!</p>
+        <a asp-controller="Home" asp-action="Index" class="btn btn-brand fw-bold px-4 py-2 rounded-3 shadow-sm">
+            <i class="fa-solid fa-utensils me-2"></i>Đặt món ngay
+        </a>
+    </div>
+}
+else
+{
+    <div class="d-flex flex-column gap-3">
+        @foreach (var o in Model)
+        {
+            <div class="bg-white rounded-4 shadow-sm p-4 hover-shadow transition border border-light-subtle">
+                <!-- HEADER CARD -->
+                <div class="d-flex flex-wrap justify-content-between align-items-center pb-3 border-bottom gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-store text-brand fs-5"></i>
+                        <span class="fw-bold text-dark fs-6">@(o.Restaurant?.Name ?? "Nhà hàng Foodie")</span>
+                        <span class="text-muted small">• Mã đơn: <strong class="text-dark">#@o.OrderCode</strong></span>
+                    </div>
+                    <span class="badge @GetStatusBadgeClass(o.OrderStatus) px-3 py-2 rounded-pill small fw-semibold">
+                        <i class="fa-solid @GetStatusIcon(o.OrderStatus) me-1"></i>@GetStatusLabel(o.OrderStatus)
+                    </span>
+                </div>
+
+                <!-- BODY ITEMS SUMMARY -->
+                <div class="py-3">
+                    <div class="d-flex flex-column gap-2">
+                        @foreach (var it in o.OrderItems.Take(3))
+                        {
+                            <div class="d-flex justify-content-between align-items-center small text-muted">
+                                <div>
+                                    <span class="text-dark fw-semibold">@it.ItemName</span> 
+                                    <span class="text-muted">x@(it.Quantity)</span>
+                                </div>
+                                <span class="fw-medium">@it.LineTotal.ToString("N0")đ</span>
+                            </div>
+                        }
+                        @if (o.OrderItems.Count > 3)
+                        {
+                            <div class="small text-muted fst-italic">... và @(o.OrderItems.Count - 3) món khác</div>
+                        }
+                    </div>
+                    <div class="text-muted small mt-2">
+                        <i class="fa-regular fa-clock me-1"></i>Thời gian đặt: @o.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                    </div>
+                </div>
+
+                <!-- FOOTER TOTAL & ACTIONS -->
+                <div class="pt-3 border-top d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div>
+                        <span class="text-muted small">Tổng thanh toán: </span>
+                        <span class="fs-5 fw-bold text-brand">@o.TotalAmount.ToString("N0")đ</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        @if (o.OrderStatus == "completed")
+                        {
+                            <a asp-controller="Order" asp-action="Details" asp-route-id="@o.Id" class="btn btn-sm btn-outline-warning text-dark fw-bold rounded-3 px-3">
+                                <i class="fa-solid fa-star text-warning me-1"></i>Đánh giá
+                            </a>
+                        }
+                        else if (o.OrderStatus == "delivering" || o.OrderStatus == "picked_up")
+                        {
+                            <a asp-controller="Order" asp-action="Details" asp-route-id="@o.Id" class="btn btn-sm btn-outline-primary fw-bold rounded-3 px-3">
+                                <i class="fa-solid fa-map-location-dot me-1"></i>Xem bản đồ
+                            </a>
+                        }
+
+                        @if (o.Restaurant != null)
+                        {
+                            <a asp-controller="Restaurant" asp-action="Details" asp-route-id="@o.RestaurantId" class="btn btn-sm btn-outline-secondary rounded-3 px-3">
+                                <i class="fa-solid fa-rotate me-1"></i> Mua lại
+                            </a>
+                        }
+                        <a asp-controller="Order" asp-action="Details" asp-route-id="@o.Id" class="btn btn-sm btn-brand fw-bold rounded-3 px-3">
+                            Xem chi tiết <i class="fa-solid fa-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

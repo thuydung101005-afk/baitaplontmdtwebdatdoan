@@ -1,0 +1,119 @@
+:root {
+    --brand: #FF7A00;
+}
+
+body {
+    background: #f5f6f8;
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.text-brand {
+    color: var(--brand) !important;
+}
+
+.bg-brand {
+    background-color: var(--brand) !important;
+}
+
+.btn-brand {
+    background-color: var(--brand);
+    border-color: var(--brand);
+    color: #fff;
+}
+
+    .btn-brand:hover {
+        background-color: #e56d00;
+        border-color: #e56d00;
+        color: #fff;
+    }
+
+.btn-outline-brand {
+    border-color: var(--brand);
+    color: var(--brand);
+    background: #fff;
+}
+
+    .btn-outline-brand:hover {
+        background-color: var(--brand);
+        color: #fff;
+    }
+
+.active-nav {
+    background-color: var(--brand);
+    color: #fff !important;
+}
+
+.nav-link:hover:not(.active-nav) {
+    background-color: #f5f6f8;
+}
+
+/* Card sản phẩm / nhà hàng */
+.fd-card {
+    border-radius: 14px;
+    overflow: hidden;
+    border: none;
+}
+
+.fd-card-img {
+    height: 140px;
+    object-fit: cover;
+}
+
+/* Banner */
+.fd-banner {
+    background: linear-gradient(90deg, #2b1a12, #4a2f1e);
+    border-radius: 16px;
+    color: #fff;
+}
+
+/* Category strip */
+.fd-cat-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #FFF3E8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: var(--brand);
+}
+
+@keyframes cartBounce {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.25);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.cart-bounce {
+    animation: cartBounce 0.3s ease;
+}
+
+.hover-brand {
+    transition: color 0.2s ease;
+}
+
+.hover-brand:hover {
+    color: var(--brand) !important;
+}
+
+.product-card .fd-card-img {
+    transition: transform 0.3s ease;
+}
+
+.product-card:hover .fd-card-img {
+    transform: scale(1.05);
+}
+
+.shadow-xs {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+

@@ -1,0 +1,424 @@
+@model baitaplontmdtwebdatdoan.Models.RestaurantDetailsViewModel
+@{
+    ViewData["Title"] = Model.Restaurant.Name;
+    var categorizedItems = Model.MenuItems.GroupBy(m => m.Category?.Name ?? "Món khác").ToList();
+}
+
+<!-- BANNER VÀ ẢNH BÌA -->
+<div class="position-relative rounded-4 overflow-hidden mb-4 shadow-sm" style="height:240px; background:#f0f0f0;">
+    <img src="@(string.IsNullOrEmpty(Model.Restaurant.CoverImageUrl) ? "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200" : Model.Restaurant.CoverImageUrl)"
+         class="w-100 h-100 object-fit-cover" alt="@Model.Restaurant.Name" 
+         onerror="this.src='https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200';" />
+</div>
+
+<!-- THÔNG TIN NHÀ HÀNG -->
+<div class="bg-white rounded-4 shadow-sm p-4 mb-4 position-relative">
+    <div class="row align-items-center g-3">
+        <div class="col-md-9">
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill small">
+                    <i class="fa-solid fa-circle me-1" style="font-size:8px"></i>Đang mở cửa
+                </span>
+                <span class="badge bg-light text-muted border small">
+                    Đơn tối thiểu: @Model.Restaurant.MinOrderAmount.ToString("N0")đ
+                </span>
+            </div>
+            <h2 class="fw-bold mb-2">@Model.Restaurant.Name</h2>
+            <div class="d-flex flex-wrap gap-3 text-muted small mb-2">
+                <span><i class="fa-solid fa-star text-warning me-1"></i><strong>@(Model.Restaurant.AvgRating > 0 ? Model.Restaurant.AvgRating.ToString("0.0") : "5.0")</strong> (@Model.Restaurant.TotalReviews đánh giá)</span>
+                <span><i class="fa-solid fa-bell text-brand me-1"></i><strong id="followersCountText">@((int)(ViewBag.FollowersCount ?? 0))</strong> người theo dõi</span>
+                <span><i class="fa-regular fa-clock me-1 text-brand"></i>@Model.Restaurant.PrepTimeMinutes phút chuẩn bị</span>
+                <span><i class="fa-solid fa-location-dot me-1 text-danger"></i>@Model.Restaurant.Address</span>
+                @if (!string.IsNullOrEmpty(Model.Restaurant.Phone))
+                {
+                    <span><i class="fa-solid fa-phone me-1 text-success"></i>@Model.Restaurant.Phone</span>
+                }
+            </div>
+            @if (!string.IsNullOrEmpty(Model.Restaurant.Description))
+            {
+                <p class="text-muted small mb-0 mt-2">@Model.Restaurant.Description</p>
+            }
+        </div>
+        <div class="col-md-5 text-md-end d-flex flex-wrap justify-content-md-end align-items-center gap-2">
+            @{
+                var isFav = (bool)(ViewBag.IsFavorite ?? false);
+                var isFollowing = (bool)(ViewBag.IsFollowing ?? false);
+            }
+            <!-- Nút Theo dõi quán (Follow Shop) -->
+            <button type="button" class="btn @(isFollowing ? "btn-light border text-dark" : "btn-brand") btn-sm rounded-pill px-3 toggle-follow-btn" 
+                    id="btnFollowShop" data-restaurant-id="@Model.Restaurant.Id">
+                <i class="fa-solid @(isFollowing ? "fa-check" : "fa-plus") me-1"></i>
+                <span id="followBtnText">@(isFollowing ? "Đang theo dõi" : "Theo dõi")</span>
+            </button>
+
+            <!-- Nút Yêu thích quán -->
+            <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3 toggle-fav-btn @(isFav ? "is-favorited active bg-danger-subtle text-danger" : "")" data-restaurant-id="@Model.Restaurant.Id">
+                <i class="@(isFav ? "fa-solid" : "fa-regular") fa-heart me-1 @(isFav ? "text-danger" : "")"></i>
+                <span class="fav-btn-text">@(isFav ? "Đã thích" : "Yêu thích")</span>
+            </button>
+
+            <!-- Nút Nhắn tin với quán (Chat) -->
+            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" id="btnOpenChatDrawer">
+                <i class="fa-regular fa-comment-dots me-1"></i> Chat với quán
+            </button>
+
+            <!-- Xem đánh giá -->
+            <a href="#reviews-section" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="fa-regular fa-comments me-1"></i> @Model.Reviews.Count đánh giá
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- THANH LỌC DANH MỤC NHANH (STICKY STRIP) -->
+@if (Model.Categories.Any())
+{
+    <div class="bg-white rounded-4 shadow-sm p-2 mb-4 d-flex gap-2 overflow-auto sticky-top" style="top:75px; z-index:100;">
+        <a href="#all" class="btn btn-sm btn-brand rounded-pill px-3 fw-semibold flex-shrink-0">
+            Tất cả (@Model.MenuItems.Count)
+        </a>
+        @foreach (var cat in Model.Categories)
+        {
+            var count = Model.MenuItems.Count(m => m.CategoryId == cat.Id);
+            if (count > 0)
+            {
+                <a href="#cat-@cat.Id" class="btn btn-sm btn-light border rounded-pill px-3 fw-semibold flex-shrink-0 text-dark">
+                    @cat.Name (@count)
+                </a>
+            }
+        }
+    </div>
+}
+
+<!-- DANH SÁCH MÓN ĂN THEO DANH MỤC -->
+@if (!Model.MenuItems.Any())
+{
+    <div class="bg-white rounded-4 p-5 text-center shadow-sm mb-5">
+        <i class="fa-solid fa-bowl-food text-muted fs-1 mb-3 opacity-50"></i>
+        <h5 class="fw-bold text-muted">Nhà hàng đang cập nhật thực đơn</h5>
+        <p class="small text-muted mb-0">Vui lòng quay lại sau ít phút bạn nhé!</p>
+    </div>
+}
+else
+{
+    @foreach (var group in categorizedItems)
+    {
+        var firstItem = group.First();
+        <div class="mb-5" id="@(firstItem.CategoryId.HasValue ? "cat-" + firstItem.CategoryId : "other")">
+            <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                <span class="text-brand">●</span> @group.Key (@group.Count())
+            </h5>
+            <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-3">
+                @foreach (var item in group)
+                {
+                    <div class="col">
+                        @await Html.PartialAsync("_MenuItemCard", item)
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}
+
+<!-- PHẦN ĐÁNH GIÁ CỦA KHÁCH HÀNG -->
+<div class="bg-white rounded-4 shadow-sm p-4 mt-5" id="reviews-section">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h5 class="fw-bold mb-1"><i class="fa-solid fa-star text-warning me-2"></i>Đánh giá & Nhận xét từ thực khách</h5>
+            <div class="text-muted small">Điểm trung bình: <strong>@(Model.Restaurant.AvgRating > 0 ? Model.Restaurant.AvgRating.ToString("0.0") : "5.0") / 5.0</strong> dựa trên @Model.Restaurant.TotalReviews lượt đánh giá</div>
+        </div>
+    </div>
+
+    @if (!Model.Reviews.Any())
+    {
+        <div class="text-center py-4">
+            <i class="fa-regular fa-comment-dots text-muted fs-2 mb-2 opacity-50"></i>
+            <p class="text-muted small mb-0">Chưa có đánh giá nào cho nhà hàng này. Hãy là người đầu tiên thưởng thức và chia sẻ cảm nhận nhé!</p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var rev in Model.Reviews)
+            {
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-3 bg-light h-100">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <img src="https://ui-avatars.com/api/?name=@(rev.User?.FullName ?? "Khách")&background=FF7A00&color=fff" 
+                                     class="rounded-circle" width="36" height="36" alt="avatar" />
+                                <div>
+                                    <div class="fw-semibold small">@(rev.User?.FullName ?? "Khách hàng ẩn danh")</div>
+                                    <div class="text-muted" style="font-size:11px">@rev.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                                </div>
+                            </div>
+                            <div class="text-warning small">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    if (i <= rev.Rating)
+                                    {
+                                        <i class="fa-solid fa-star"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="fa-regular fa-star text-muted"></i>
+                                    }
+                                }
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(rev.Comment))
+                        {
+                            <p class="small text-dark mb-0">@rev.Comment</p>
+                        }
+
+                        @if (!string.IsNullOrEmpty(rev.ReplyFromOwner))
+                        {
+                            <div class="bg-white p-2 rounded-2 mt-2 border-start border-3 border-brand small">
+                                <span class="fw-bold text-brand">Phản hồi của quán:</span> @rev.ReplyFromOwner
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- ===== CỬA SỔ CHAT VỚI QUÁN ĂN NỔI (FLOATING CHAT DRAWER SHOPEE STYLE) ===== -->
+<div id="shopChatDrawer" class="position-fixed shadow-lg rounded-4 overflow-hidden border bg-white" 
+     style="bottom: 24px; right: 24px; width: 360px; height: 500px; z-index: 1060; display: none; flex-direction: column;">
+    
+    <!-- Chat Header -->
+    <div class="p-3 text-white d-flex justify-content-between align-items-center" 
+         style="background: linear-gradient(135deg, #FF7A00 0%, #FF5500 100%);">
+        <div class="d-flex align-items-center gap-2">
+            <div class="position-relative">
+                <img src="@(string.IsNullOrEmpty(Model.Restaurant.LogoUrl) ? "https://placehold.co/60x60?text=Food" : Model.Restaurant.LogoUrl)" 
+                     class="rounded-circle bg-white p-1 border" width="38" height="38" alt="@Model.Restaurant.Name" 
+                     onerror="this.src='https://placehold.co/60x60?text=Food';" />
+                <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle p-1"></span>
+            </div>
+            <div>
+                <div class="fw-bold text-truncate" style="max-width: 200px; font-size: 14px;">@Model.Restaurant.Name</div>
+                <div style="font-size: 11px; opacity: 0.9;">
+                    <i class="fa-solid fa-circle text-success me-1" style="font-size: 8px;"></i>Đang hoạt động &bull; Phản hồi nhanh
+                </div>
+            </div>
+        </div>
+        <div>
+            <button type="button" class="btn btn-sm btn-link text-white p-1" id="btnCloseChatDrawer" title="Đóng chat">
+                <i class="fa-solid fa-xmark fs-5"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Quick Suggestion Pills (Câu hỏi gợi ý nhanh Shopee) -->
+    <div class="p-2 bg-light border-bottom d-flex gap-2 overflow-auto text-nowrap" style="font-size: 11px;">
+        <span class="badge bg-white text-dark border rounded-pill px-2 py-1 cursor-pointer quick-chat-pill">Quán còn mở cửa không ạ?</span>
+        <span class="badge bg-white text-dark border rounded-pill px-2 py-1 cursor-pointer quick-chat-pill">Món nào bán chạy nhất?</span>
+        <span class="badge bg-white text-dark border rounded-pill px-2 py-1 cursor-pointer quick-chat-pill">Có mã giảm giá không ạ?</span>
+        <span class="badge bg-white text-dark border rounded-pill px-2 py-1 cursor-pointer quick-chat-pill">Bao lâu thì giao tới ạ?</span>
+    </div>
+
+    <!-- Vùng tin nhắn -->
+    <div class="flex-grow-1 overflow-auto p-3 d-flex flex-column gap-2 bg-light" id="chatDrawerMessages" style="font-size: 13px;">
+        <div class="text-center py-4 text-muted small my-auto">
+            <i class="fa-regular fa-comment-dots fs-2 mb-2 text-brand opacity-50"></i>
+            <div>Đang kết nối với @Model.Restaurant.Name...</div>
+        </div>
+    </div>
+
+    <!-- Khung soạn thảo tin nhắn -->
+    <div class="p-2 bg-white border-top">
+        <div class="input-group">
+            <input type="text" id="chatDrawerInput" class="form-control form-control-sm rounded-start-pill border py-2 px-3" 
+                   placeholder="Nhập tin nhắn gửi quán..." />
+            <button type="button" id="chatDrawerSendBtn" class="btn btn-brand btn-sm rounded-end-pill px-3 fw-bold">
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        const restaurantId = "@Model.Restaurant.Id";
+        const currentUserId = "@(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0")";
+
+        // ===== 1. XỬ LÝ THEO DÕI QUÁN ĂN (FOLLOW SHOP) =====
+        const btnFollow = document.getElementById('btnFollowShop');
+        const followText = document.getElementById('followBtnText');
+        const followersCountEl = document.getElementById('followersCountText');
+
+        if (btnFollow) {
+            btnFollow.addEventListener('click', function() {
+                if (currentUserId === "0") {
+                    window.location.href = '/Account/Login?returnUrl=' + encodeURIComponent(window.location.pathname);
+                    return;
+                }
+
+                btnFollow.disabled = true;
+                fetch('/Follow/Toggle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `restaurantId=${restaurantId}`
+                })
+                .then(res => res.json())
+                .then(data => {
+                    btnFollow.disabled = false;
+                    if (data.success) {
+                        if (data.isFollowing) {
+                            btnFollow.className = 'btn btn-light border text-dark btn-sm rounded-pill px-3 toggle-follow-btn';
+                            btnFollow.innerHTML = '<i class="fa-solid fa-check me-1 text-success"></i><span id="followBtnText">Đang theo dõi</span>';
+                        } else {
+                            btnFollow.className = 'btn btn-brand btn-sm rounded-pill px-3 toggle-follow-btn';
+                            btnFollow.innerHTML = '<i class="fa-solid fa-plus me-1"></i><span id="followBtnText">Theo dõi</span>';
+                        }
+                        if (followersCountEl && typeof data.followersCount !== 'undefined') {
+                            followersCountEl.textContent = data.followersCount;
+                        }
+                        showGlobalToast(data.message);
+                    }
+                })
+                .catch(() => {
+                    btnFollow.disabled = false;
+                });
+            });
+        }
+
+        // ===== 2. XỬ LÝ NHẮN TIN VỚI QUÁN ĂN (REALTIME CHAT) =====
+        const chatDrawer = document.getElementById('shopChatDrawer');
+        const btnOpenChat = document.getElementById('btnOpenChatDrawer');
+        const btnCloseChat = document.getElementById('btnCloseChatDrawer');
+        const chatInput = document.getElementById('chatDrawerInput');
+        const chatSendBtn = document.getElementById('chatDrawerSendBtn');
+        const chatBox = document.getElementById('chatDrawerMessages');
+
+        let chatHub = null;
+        let isChatLoaded = false;
+
+        function initChatConnection() {
+            if (chatHub) return;
+
+            chatHub = new signalR.HubConnectionBuilder()
+                .withUrl("/chatHub")
+                .withAutomaticReconnect()
+                .build();
+
+            chatHub.on("ReceiveMessage", function (role, senderName, text, time) {
+                appendChatMessage(role === 'customer', senderName, text, time);
+            });
+
+            chatHub.start().then(() => {
+                chatHub.invoke("JoinChatRoom", restaurantId.toString(), currentUserId.toString()).catch(() => {});
+            });
+        }
+
+        function loadChatMessages() {
+            fetch(`/Chat/GetMessages?restaurantId=${restaurantId}&customerId=${currentUserId}`)
+                .then(res => {
+                    if (res.status === 401) {
+                        window.location.href = '/Account/Login?returnUrl=' + encodeURIComponent(window.location.pathname);
+                        return null;
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    if (!data) return;
+                    chatBox.innerHTML = '';
+                    if (data.messages && data.messages.length > 0) {
+                        data.messages.forEach(m => {
+                            appendChatMessage(m.isMe, m.senderName, m.message, m.time);
+                        });
+                    } else {
+                        chatBox.innerHTML = '<div class="text-center text-muted small my-auto">Hãy gửi tin nhắn đầu tiên để bắt đầu trò chuyện với quán nhé! 👋</div>';
+                    }
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                });
+        }
+
+        function appendChatMessage(isMe, senderName, text, time) {
+            const div = document.createElement('div');
+            div.className = isMe ? 'd-flex justify-content-end mb-1' : 'd-flex justify-content-start mb-1';
+
+            const bg = isMe ? 'bg-brand text-white' : 'bg-white text-dark border';
+            div.innerHTML = `
+                <div class="rounded-4 py-2 px-3 shadow-xs ${bg}" style="max-width: 80%;">
+                    ${!isMe ? `<div class="fw-bold mb-1 text-brand" style="font-size:10px;">${senderName}</div>` : ''}
+                    <div>${escapeHtml(text)}</div>
+                    <div class="text-end mt-1" style="font-size:9px; opacity:0.75;">${time}</div>
+                </div>
+            `;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function sendCustomerMessage(textToSend) {
+            const text = (textToSend || chatInput.value).trim();
+            if (!text) return;
+
+            if (currentUserId === "0") {
+                window.location.href = '/Account/Login?returnUrl=' + encodeURIComponent(window.location.pathname);
+                return;
+            }
+
+            chatInput.value = '';
+
+            fetch('/Chat/SendMessage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `restaurantId=${restaurantId}&customerId=${currentUserId}&message=${encodeURIComponent(text)}`
+            });
+        }
+
+        if (btnOpenChat) {
+            btnOpenChat.addEventListener('click', function() {
+                if (currentUserId === "0") {
+                    window.location.href = '/Account/Login?returnUrl=' + encodeURIComponent(window.location.pathname);
+                    return;
+                }
+
+                chatDrawer.style.display = 'flex';
+                initChatConnection();
+                if (!isChatLoaded) {
+                    loadChatMessages();
+                    isChatLoaded = true;
+                }
+                chatInput.focus();
+            });
+        }
+
+        if (btnCloseChat) {
+            btnCloseChat.addEventListener('click', function() {
+                chatDrawer.style.display = 'none';
+            });
+        }
+
+        if (chatSendBtn) {
+            chatSendBtn.addEventListener('click', () => sendCustomerMessage());
+        }
+
+        if (chatInput) {
+            chatInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendCustomerMessage();
+                }
+            });
+        }
+
+        // Quick suggestions
+        document.querySelectorAll('.quick-chat-pill').forEach(pill => {
+            pill.addEventListener('click', function() {
+                sendCustomerMessage(this.innerText);
+            });
+        });
+
+        function escapeHtml(text) {
+            const d = document.createElement('div');
+            d.innerText = text;
+            return d.innerHTML;
+        }
+    </script>
+}

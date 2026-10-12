@@ -1,0 +1,210 @@
+@model baitaplontmdtwebdatdoan.Models.MenuItemDetailsViewModel
+@{
+    var item = Model.Item;
+    ViewData["Title"] = item.Name + " - Chi tiết món ăn";
+    var imgUrl = string.IsNullOrEmpty(item.ImageUrl) ? "https://placehold.co/600x450?text=Foodie" : item.ImageUrl;
+}
+
+<!-- BREADCRUMB -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb small">
+        <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index" class="text-decoration-none text-muted">Trang chủ</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Menu" asp-action="Index" class="text-decoration-none text-muted">Thực đơn</a></li>
+        @if (item.Category != null)
+        {
+            <li class="breadcrumb-item">
+                <a asp-controller="Menu" asp-action="Index" asp-route-category="@item.Category.Name" class="text-decoration-none text-muted">@item.Category.Name</a>
+            </li>
+        }
+        <li class="breadcrumb-item active fw-bold text-brand" aria-current="page">@item.Name</li>
+    </ol>
+</nav>
+
+<!-- MAIN PRODUCT DETAIL CARD -->
+<div class="bg-white rounded-4 shadow-sm p-4 p-lg-5 mb-5 product-card" data-id="@item.Id">
+    <div class="row g-4 g-lg-5">
+        <!-- CỘT ẢNH MÓN ĂN -->
+        <div class="col-lg-6">
+            <div class="position-relative rounded-4 overflow-hidden shadow-sm mb-3" style="max-height:450px; background:#f8f9fa;">
+                <img src="@imgUrl" class="w-100 h-100 object-fit-cover product-img" alt="@item.Name" 
+                     style="min-height:360px; max-height:450px;"
+                     onerror="this.src='https://placehold.co/600x450?text=Foodie';" />
+                
+                <div class="position-absolute top-0 start-0 p-3 d-flex flex-column gap-2">
+                    @if (item.IsBestSeller)
+                    {
+                        <span class="badge bg-danger px-3 py-2 rounded-pill fw-bold shadow-sm">
+                            <i class="fa-solid fa-fire me-1"></i> BÁN CHẠY NHẤT
+                        </span>
+                    }
+                    @if (item.IsAvailable)
+                    {
+                        <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill fw-semibold shadow-sm">
+                            <i class="fa-solid fa-circle me-1" style="font-size:8px"></i> Đang mở bán
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary px-3 py-2 rounded-pill fw-bold shadow-sm">
+                            Tạm hết hàng
+                        </span>
+                    }
+                </div>
+            </div>
+
+            <!-- TIÊU CHUẨN DỊCH VỤ -->
+            <div class="row g-2 text-center text-muted small mt-2">
+                <div class="col-4">
+                    <div class="p-2 border rounded-3 bg-light">
+                        <i class="fa-solid fa-shield-halved text-success fs-5 mb-1 d-block"></i>
+                        <span>Vệ sinh ATTP</span>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="p-2 border rounded-3 bg-light">
+                        <i class="fa-solid fa-truck-fast text-brand fs-5 mb-1 d-block"></i>
+                        <span>Giao 30-45 phút</span>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="p-2 border rounded-3 bg-light">
+                        <i class="fa-solid fa-rotate-left text-primary fs-5 mb-1 d-block"></i>
+                        <span>Đổi trả nếu sai</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CỘT THÔNG TIN VÀ ĐẶT MÓN -->
+        <div class="col-lg-6 d-flex flex-column justify-content-between">
+            <div>
+                <!-- Danh mục và tên -->
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge bg-light text-brand border px-3 py-1 rounded-pill fw-semibold">
+                        @(item.Category?.Name ?? "Món ngon Foodie")
+                    </span>
+                    <span class="text-muted small">
+                        <i class="fa-solid fa-star text-warning me-1"></i>4.9 (120+ lượt mua)
+                    </span>
+                </div>
+
+                <h2 class="fw-bold text-dark mb-3">@item.Name</h2>
+
+                <!-- Giá bán -->
+                <div class="p-3 rounded-4 bg-light mb-4 d-flex align-items-baseline gap-2">
+                    <span class="fs-1 fw-bold text-brand">@item.BasePrice.ToString("N0")đ</span>
+                    <span class="text-muted text-decoration-line-through small">@((item.BasePrice * 1.15m).ToString("N0"))đ</span>
+                    <span class="badge bg-danger rounded-pill ms-2 small">-15% ƯU ĐÃI</span>
+                </div>
+
+                <!-- Mô tả món ăn -->
+                <div class="mb-4">
+                    <h6 class="fw-bold text-dark mb-2"><i class="fa-solid fa-circle-info text-brand me-2"></i>Mô tả món ăn</h6>
+                    <p class="text-muted leading-relaxed mb-0">
+                        @(string.IsNullOrWhiteSpace(item.Description) 
+                            ? "Món ngon thơm lừng, được chế biến từ những nguyên liệu tươi ngon nhất trong ngày theo công thức đặc biệt của nhà hàng, đem lại trải nghiệm ẩm thực tuyệt vời." 
+                            : item.Description)
+                    </p>
+                </div>
+
+                <!-- KHỐI NHÀ HÀNG PHỤC VỤ -->
+                @if (item.Restaurant != null)
+                {
+                    <div class="border rounded-4 p-3 mb-4 bg-white hover-shadow transition">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-3">
+                                <img src="@(string.IsNullOrEmpty(item.Restaurant.LogoUrl) ? "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=100" : item.Restaurant.LogoUrl)" 
+                                     class="rounded-circle object-fit-cover shadow-xs border" style="width:48px; height:48px" alt="@item.Restaurant.Name" 
+                                     onerror="this.src='https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=100';" />
+                                <div>
+                                    <div class="fw-bold text-dark">@item.Restaurant.Name</div>
+                                    <div class="text-muted small">
+                                        <i class="fa-solid fa-location-dot text-danger me-1"></i>@item.Restaurant.Address
+                                    </div>
+                                </div>
+                            </div>
+                            <a asp-controller="Restaurant" asp-action="Details" asp-route-id="@item.RestaurantId" class="btn btn-outline-brand btn-sm rounded-pill px-3 fw-semibold">
+                                Xem quán
+                            </a>
+                        </div>
+                    </div>
+                }
+
+                <!-- TOPPING / TÙY CHỌN (NẾU CÓ) -->
+                @if (item.ItemOptionGroups.Any())
+                {
+                    <div class="mb-4">
+                        <h6 class="fw-bold text-dark mb-2">Tùy chọn kèm theo</h6>
+                        @foreach (var g in item.ItemOptionGroups)
+                        {
+                            <div class="border rounded-3 p-3 mb-2">
+                                <div class="fw-semibold small text-muted mb-2">@g.Name @(g.IsRequired ? "(Bắt buộc)" : "")</div>
+                                <div class="d-flex flex-wrap gap-3">
+                                    @foreach (var opt in g.ItemOptions)
+                                    {
+                                        <label class="form-check small d-flex align-items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" class="form-check-input" />
+                                            <span>@opt.Name</span>
+                                            @if (opt.ExtraPrice > 0)
+                                            {
+                                                <span class="text-brand fw-bold">+@opt.ExtraPrice.ToString("N0")đ</span>
+                                            }
+                                        </label>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- CHỌN SỐ LƯỢNG VÀ NÚT MUA -->
+            <div class="border-top pt-4 mt-3">
+                <div class="d-flex align-items-center gap-3 mb-4">
+                    <span class="fw-semibold text-muted small">Số lượng:</span>
+                    <div class="input-group" style="width: 140px;">
+                        <button type="button" class="btn btn-outline-secondary qty-btn" data-action="decrease">-</button>
+                        <span class="form-control text-center fw-bold qty-value" style="display:flex;align-items:center;justify-content:center;">1</span>
+                        <button type="button" class="btn btn-outline-secondary qty-btn" data-action="increase">+</button>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-3">
+                    <button type="button" class="btn btn-outline-brand flex-fill fw-bold py-3 fs-6 rounded-3 add-cart-btn" 
+                            @(item.IsAvailable ? "" : "disabled")>
+                        <i class="fa-solid fa-cart-plus me-2"></i> Thêm vào giỏ hàng
+                    </button>
+                    <button type="button" class="btn btn-brand flex-fill fw-bold py-3 fs-6 rounded-3 buy-now-btn" 
+                            @(item.IsAvailable ? "" : "disabled")>
+                        <i class="fa-solid fa-bolt me-2"></i> Mua ngay
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PHẦN MÓN ĂN GỢI Ý CÙNG QUÁN -->
+@if (Model.RelatedItems.Any())
+{
+    <div class="mt-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold mb-0">🍽️ Món ngon khác từ quán</h4>
+            @if (item.Restaurant != null)
+            {
+                <a asp-controller="Restaurant" asp-action="Details" asp-route-id="@item.RestaurantId" class="text-brand fw-semibold text-decoration-none small">
+                    Xem tất cả menu quán <i class="fa-solid fa-chevron-right ms-1 small"></i>
+                </a>
+            }
+        </div>
+
+        <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3">
+            @foreach (var rel in Model.RelatedItems)
+            {
+                <div class="col">
+                    @await Html.PartialAsync("_MenuItemCard", rel)
+                </div>
+            }
+        </div>
+    </div>
+}
