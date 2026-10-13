@@ -26,17 +26,60 @@ namespace baitaplontmdtwebdatdoan.Controllers
 
         private long CurrentUserId => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-        // GET /Order/Checkout - xem lại giỏ trước khi đặt
-        public async Task<IActionResult> Checkout(List<long>? selectedIds)
+        // Dựng một dòng hàng tạm (không lưu vào giỏ) cho chức năng "Mua ngay"
+        private async Task<CartItem?> BuildBuyNowItemAsync(long menuItemId, int quantity)
         {
-            var query = _context.CartItems
-                .Include(c => c.MenuItem)
-                .Where(c => c.UserId == CurrentUserId);
+            var item = await _context.MenuItems
+                .AsNoTracking()
+                .Include(m => m.Restaurant)
+                .FirstOrDefaultAsync(m => m.Id == menuItemId);
 
-            if (selectedIds != null && selectedIds.Any())
-                query = query.Where(c => selectedIds.Contains(c.Id));
+            if (item == null || !item.IsAvailable || item.DeletedAt != null)
+                return null;
 
-            var cartItems = await query.ToListAsync();
+            return new CartItem
+            {
+                Id = 0,
+                UserId = CurrentUserId,
+                RestaurantId = item.RestaurantId,
+                MenuItemId = item.Id,
+                Quantity = Math.Clamp(quantity, 1, 99),
+                CreatedAt = DateTime.UtcNow,
+                MenuItem = item,
+                Restaurant = item.Restaurant
+            };
+        }
+
+        // GET /Order/Checkout - xem lại giỏ trước khi đặt
+        public async Task<IActionResult> Checkout(List<long>? selectedIds, long? buyNowMenuItemId = null, int buyNowQty = 1)
+        {
+            List<CartItem> cartItems;
+
+            if (buyNowMenuItemId.HasValue)
+            {
+                // "Mua ngay": thanh toán đúng món này, không đụng tới giỏ hàng
+                var buyItem = await BuildBuyNowItemAsync(buyNowMenuItemId.Value, buyNowQty);
+                if (buyItem == null)
+                {
+                    TempData["Error"] = "Món ăn này hiện đang tạm ngưng phục vụ.";
+                    return RedirectToAction("Index", "Home");
+                }
+
+                cartItems = new List<CartItem> { buyItem };
+                ViewBag.BuyNowMenuItemId = buyItem.MenuItemId;
+                ViewBag.BuyNowQty = buyItem.Quantity;
+            }
+            else
+            {
+                var query = _context.CartItems
+                    .Include(c => c.MenuItem)
+                    .Where(c => c.UserId == CurrentUserId);
+
+                if (selectedIds != null && selectedIds.Any())
+                    query = query.Where(c => selectedIds.Contains(c.Id));
+
+                cartItems = await query.ToListAsync();
+            }
 
             if (!cartItems.Any())
             {
@@ -82,25 +125,43 @@ namespace baitaplontmdtwebdatdoan.Controllers
             string addressLine,
             string? paymentMethod,
             string? note,
-            string selectedIdsCsv,
+            string? selectedIdsCsv,
             string? voucherCode,
-            long? selectedAddressId = null)
+            long? selectedAddressId = null,
+            long? buyNowMenuItemId = null,
+            int buyNowQty = 1)
         {
-            if (string.IsNullOrWhiteSpace(selectedIdsCsv))
+            var isBuyNow = buyNowMenuItemId.HasValue;
+
+            if (!isBuyNow && string.IsNullOrWhiteSpace(selectedIdsCsv))
             {
                 TempData["Error"] = "Vui lòng chọn ít nhất 1 món để thanh toán.";
                 return RedirectToAction("Index", "Cart");
             }
 
-            var ids = selectedIdsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            var ids = (selectedIdsCsv ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries)
                                     .Select(s => long.TryParse(s, out var id) ? id : 0)
                                     .Where(id => id > 0)
                                     .ToList();
 
-            var cartItems = await _context.CartItems
-                .Include(c => c.MenuItem)
-                .Where(c => c.UserId == CurrentUserId && ids.Contains(c.Id))
-                .ToListAsync();
+            // Khi gặp lỗi thì quay lại đúng trang thanh toán đang làm (giỏ hàng hoặc Mua ngay)
+            IActionResult BackToCheckout() => isBuyNow
+                ? RedirectToAction("Checkout", new { buyNowMenuItemId, buyNowQty })
+                : RedirectToAction("Checkout", new { selectedIds = ids });
+
+            List<CartItem> cartItems;
+            if (isBuyNow)
+            {
+                var buyItem = await BuildBuyNowItemAsync(buyNowMenuItemId!.Value, buyNowQty);
+                cartItems = buyItem == null ? new List<CartItem>() : new List<CartItem> { buyItem };
+            }
+            else
+            {
+                cartItems = await _context.CartItems
+                    .Include(c => c.MenuItem)
+                    .Where(c => c.UserId == CurrentUserId && ids.Contains(c.Id))
+                    .ToListAsync();
+            }
 
             if (!cartItems.Any())
             {
@@ -112,7 +173,7 @@ namespace baitaplontmdtwebdatdoan.Controllers
             if (unavailable != null)
             {
                 TempData["Error"] = $"Món \"{unavailable.MenuItem.Name}\" hiện đang tạm ngưng phục vụ.";
-                return RedirectToAction("Checkout", new { selectedIds = ids });
+                return BackToCheckout();
             }
 
             Address? deliveryAddress = null;
@@ -127,7 +188,7 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 if (string.IsNullOrWhiteSpace(receiverName) || string.IsNullOrWhiteSpace(receiverPhone) || string.IsNullOrWhiteSpace(addressLine))
                 {
                     TempData["Error"] = "Vui lòng nhập đầy đủ thông tin: Họ tên, Số điện thoại và Địa chỉ giao hàng.";
-                    return RedirectToAction("Checkout", new { selectedIds = ids });
+                    return BackToCheckout();
                 }
 
                 // Lưu địa chỉ giao hàng
@@ -206,7 +267,7 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 if (wallet == null || wallet.Balance < totalAmount)
                 {
                     TempData["Error"] = "Số dư Ví Foodie không đủ để thanh toán. Vui lòng nạp thêm hoặc chọn phương thức khác.";
-                    return RedirectToAction("Checkout", new { selectedIds = ids });
+                    return BackToCheckout();
                 }
 
                 wallet.Balance -= totalAmount;
@@ -285,8 +346,9 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 Note = "Đơn hàng được tạo thành công" + (discountAmount > 0 ? $" (Đã áp dụng mã {appliedVoucher?.Code} - giảm {discountAmount:N0}đ)" : "")
             });
 
-            // Chỉ xoá đúng những món đã chọn thanh toán
-            _context.CartItems.RemoveRange(cartItems);
+            // Chỉ xoá đúng những món đã chọn thanh toán (Mua ngay thì không đụng tới giỏ hàng)
+            if (!isBuyNow)
+                _context.CartItems.RemoveRange(cartItems);
             await _context.SaveChangesAsync();
 
             // Bắn SignalR thông báo tới quán ăn theo thời gian thực

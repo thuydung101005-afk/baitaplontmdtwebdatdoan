@@ -32,43 +32,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Nút Mua ngay
+    // Nút Mua ngay: đi thẳng tới trang thanh toán với đúng món này,
+    // không thêm vào giỏ hàng nên không ảnh hưởng tới các món đang có trong giỏ.
+    // (Chưa đăng nhập thì trang thanh toán tự chuyển tới đăng nhập rồi quay lại đây.)
     document.querySelectorAll('.buy-now-btn').forEach(btn => {
         btn.addEventListener('click', function () {
             const card = this.closest('.product-card');
             const id = card.dataset.id;
             const qtySpan = card.querySelector('.qty-value');
-            const qty = qtySpan ? qtySpan.textContent : '1';
+            const qty = parseInt(qtySpan ? qtySpan.textContent : '1') || 1;
 
-            function doBuyNow(forceNew) {
-                fetch('/Cart/AddAjax', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `menuItemId=${id}&quantity=${qty}&forceNewCart=${forceNew}&buyNow=true`
-                })
-                .then(res => {
-                    if (res.status === 401) {
-                        window.location.href = '/Account/Login?returnUrl=' + encodeURIComponent(window.location.pathname);
-                        return null;
-                    }
-                    return res.json();
-                })
-                .then(data => {
-                    if (!data) return;
-                    if (data.needConfirmNewCart) {
-                        if (confirm(data.message)) {
-                            doBuyNow(true);
-                        }
-                        return;
-                    }
-                    if (data.success) {
-                        window.location.href = `/Order/Checkout?selectedIds=${data.cartItemId}`;
-                    }
-                })
-                .catch(() => alert('Có lỗi xảy ra, vui lòng thử lại.'));
-            }
-
-            doBuyNow(false);
+            window.location.href = `/Order/Checkout?buyNowMenuItemId=${id}&buyNowQty=${qty}`;
         });
     });
 });

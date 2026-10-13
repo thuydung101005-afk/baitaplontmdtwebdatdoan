@@ -43,6 +43,12 @@
 <form asp-controller="Order" asp-action="Checkout" method="post" id="checkoutForm">
     @Html.AntiForgeryToken()
     <input type="hidden" name="selectedIdsCsv" value="@string.Join(",", Model.Select(c => c.Id))" />
+    @if (ViewBag.BuyNowMenuItemId != null)
+    {
+        <!-- Chế độ "Mua ngay": thanh toán đúng món này, không lấy từ giỏ hàng -->
+        <input type="hidden" name="buyNowMenuItemId" value="@ViewBag.BuyNowMenuItemId" />
+        <input type="hidden" name="buyNowQty" value="@ViewBag.BuyNowQty" />
+    }
     <input type="hidden" name="voucherCode" id="hiddenVoucherCode" value="" />
     <input type="hidden" name="selectedAddressId" id="selectedAddressId" value="@(defaultAddress?.Id ?? 0)" />
 
