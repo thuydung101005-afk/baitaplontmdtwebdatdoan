@@ -15,6 +15,11 @@ builder.Services.AddSignalR();   // MỚI
 builder.Services.Configure<baitaplontmdtwebdatdoan.Models.BankSettings>(
     builder.Configuration.GetSection("Bank"));
 
+// Gửi email (mã quên mật khẩu). Thông tin SMTP đặt trong User Secrets, mục "Email"
+builder.Services.Configure<baitaplontmdtwebdatdoan.Models.EmailSettings>(
+    builder.Configuration.GetSection("Email"));
+builder.Services.AddScoped<baitaplontmdtwebdatdoan.Services.IAppEmailSender, baitaplontmdtwebdatdoan.Services.SmtpEmailSender>();
+
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
