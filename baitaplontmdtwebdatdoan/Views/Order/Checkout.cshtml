@@ -55,7 +55,7 @@
     <!-- 1. KHỐI ĐỊA CHỈ GIAO HÀNG (DẢI VIỀN PHONG BÌ BƯU ĐIỆN ĐẶC TRƯNG SHOPEE) -->
     <div class="bg-white rounded-4 shadow-sm mb-4 overflow-hidden position-relative border-0">
         <!-- Dải sọc bưu điện Shopee (Stripe ribbon) -->
-        <div class="shopee-stripe-bar"></div>
+        <div class="parcel-stripe-bar"></div>
 
         <div class="p-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -448,13 +448,13 @@
 </div>
 
 <style>
-    /* Dải viền bưu điện Shopee */
-    .shopee-stripe-bar {
+    /* Dải viền bưu kiện */
+    .parcel-stripe-bar {
         height: 4px;
         width: 100%;
         background-position-x: -30px;
         background-size: 116px 4px;
-        background-image: repeating-linear-gradient(45deg,#6fa6d6,#6fa6d6 33px,transparent 0,transparent 41px,#f18d9b 0,#f18d9b 74px,transparent 0,transparent 82px);
+        background-image: repeating-linear-gradient(45deg,#1D5C42,#1D5C42 33px,transparent 0,transparent 41px,#FF6A13 0,#FF6A13 74px,transparent 0,transparent 82px);
     }
 
     .payment-option-card {
@@ -462,13 +462,13 @@
         transition: all 0.2s ease;
     }
     .payment-option-card:hover {
-        border-color: #FF7A00 !important;
-        background-color: #FFF9F5;
+        border-color: var(--brand-strong) !important;
+        background-color: var(--brand-tint);
     }
     .payment-option-card.selected-option {
-        border-color: #FF7A00 !important;
-        background-color: #FFF6EE;
-        box-shadow: 0 0 0 2px rgba(255, 122, 0, 0.25);
+        border-color: var(--brand-strong) !important;
+        background-color: var(--brand-tint);
+        box-shadow: 0 0 0 2px rgba(201, 75, 7, .25);
     }
 
     .voucher-ticket-badge {
@@ -476,7 +476,7 @@
         transition: all 0.2s ease;
     }
     .voucher-ticket-badge:hover {
-        border-color: #FF7A00 !important;
+        border-color: var(--brand-strong) !important;
         transform: translateY(-2px);
     }
 
@@ -488,7 +488,7 @@
         transition: all 0.2s ease;
     }
     .address-select-item:hover {
-        border-color: #FF7A00 !important;
+        border-color: var(--brand-strong) !important;
     }
 </style>
 

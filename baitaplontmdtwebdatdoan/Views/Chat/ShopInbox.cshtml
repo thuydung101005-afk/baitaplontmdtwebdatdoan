@@ -36,7 +36,7 @@
                         <a href="javascript:void(0)" class="list-group-item list-group-item-action p-3 rounded-3 mb-2 border conversation-item"
                            onclick="loadShopConversation('@rest.Id', '@cust.Id', '@cust.FullName', '@rest.Name')">
                             <div class="d-flex align-items-center gap-3">
-                                <img src="https://ui-avatars.com/api/?name=@cust.FullName&background=FF7A00&color=fff" 
+                                <img src="https://ui-avatars.com/api/?name=@cust.FullName&background=14402E&color=fff" 
                                      class="rounded-circle shadow-xs" width="44" height="44" alt="avatar" />
                                 <div class="flex-grow-1 overflow-hidden">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
@@ -119,7 +119,7 @@
 
             document.getElementById('shopChatTitle').innerText = custName;
             document.getElementById('shopChatSubtitle').innerText = 'Khách của quán: ' + restName;
-            document.getElementById('shopChatAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(custName)}&background=FF7A00&color=fff`;
+            document.getElementById('shopChatAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(custName)}&background=14402E&color=fff`;
 
             document.getElementById('shopChatInput').disabled = false;
             document.getElementById('shopChatSendBtn').disabled = false;

@@ -207,7 +207,7 @@ else
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <div class="d-flex align-items-center gap-2">
                         <div class="position-relative">
-                            <img src="https://ui-avatars.com/api/?name=@(Model.Shipper?.FullName ?? "Shipper+Foodie")&background=FF7A00&color=fff" 
+                            <img src="https://ui-avatars.com/api/?name=@(Model.Shipper?.FullName ?? "Shipper+Foodie")&background=14402E&color=fff" 
                                  class="rounded-circle shadow-xs" width="44" height="44" alt="Driver" />
                             <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle p-1"></span>
                         </div>
@@ -673,7 +673,7 @@ else
     }
     .stepper-progress-line {
         height: 100%;
-        background-color: #FF7A00;
+        background-color: var(--brand-strong);
         transition: width 0.4s ease;
     }
     .step-item {
@@ -695,12 +695,12 @@ else
         transition: all 0.3s ease;
     }
     .step-item.step-active .step-icon-circle {
-        background: #FF7A00;
+        background: var(--brand-strong);
         color: #fff;
-        border-color: #FF7A00;
+        border-color: var(--brand-strong);
     }
     .step-item.step-active .step-label {
-        color: #FF7A00 !important;
+        color: var(--brand-strong) !important;
     }
 
     /* Radar badge animation */
@@ -798,7 +798,7 @@ else
             // Custom Marker Icons
             const restaurantIcon = L.divIcon({
                 className: 'custom-map-marker',
-                html: `<div style="background:#FF5500; color:#fff; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.3); border:2px solid #fff;"><i class="fa-solid fa-store fs-6"></i></div>`,
+                html: `<div style="background:#A63C04; color:#fff; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.3); border:2px solid #fff;"><i class="fa-solid fa-store fs-6"></i></div>`,
                 iconSize: [38, 38],
                 iconAnchor: [19, 19]
             });
@@ -812,7 +812,7 @@ else
 
             const driverIcon = L.divIcon({
                 className: 'custom-map-marker driver-marker-animated',
-                html: `<div style="background:#FF7A00; color:#fff; width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 8px rgba(255,122,0,0.25); border:3px solid #fff;"><i class="fa-solid fa-motorcycle fs-5"></i></div>`,
+                html: `<div style="background:#C94B07; color:#fff; width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 8px rgba(255,122,0,0.25); border:3px solid #fff;"><i class="fa-solid fa-motorcycle fs-5"></i></div>`,
                 iconSize: [44, 44],
                 iconAnchor: [22, 22]
             });
@@ -829,7 +829,7 @@ else
 
             // Polyline đường giao hàng
             const routeLine = L.polyline([restCoord, driverCoord, delivCoord], {
-                color: '#FF7A00',
+                color: '#C94B07',
                 weight: 5,
                 opacity: 0.85,
                 dashArray: '8, 8',

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#14402E" />
+    <title>@ViewData["Title"] - Foodie</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
+</head>
+<body class="auth-body">
+    <div class="auth-shell">
+        <aside class="auth-aside">
+            <a href="/" class="auth-logo">
+                <span class="auth-logo-mark"><i class="fa-solid fa-utensils"></i></span>
+                <span class="auth-logo-name">Foodie</span>
+            </a>
+            <div class="auth-aside-body">
+                <h2>Ăn ngon,<br />giao tận cửa.</h2>
+                <ul class="auth-points">
+                    <li><i class="fa-solid fa-location-crosshairs"></i><span><strong>Theo dõi đơn theo thời gian thực</strong>Biết món đang được nấu hay đang trên đường tới bạn.</span></li>
+                    <li><i class="fa-regular fa-comments"></i><span><strong>Nhắn tin trực tiếp với quán</strong>Dặn thêm ít cay, bỏ hành, đổi món ngay trong đơn.</span></li>
+                    <li><i class="fa-solid fa-ticket"></i><span><strong>Ưu đãi mỗi ngày</strong>Mã giảm giá và freeship áp dụng ngay khi thanh toán.</span></li>
+                </ul>
+            </div>
+        </aside>
+
+        <main class="auth-main">
+            <div class="auth-panel">
+                <a href="/" class="auth-mobile-logo">
+                    <span class="auth-logo-mark"><i class="fa-solid fa-utensils"></i></span>
+                    <span class="auth-logo-name">Foodie</span>
+                </a>
+
+                @RenderBody()
+            </div>
+        </main>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+    <script>
+        // Nút hiện/ẩn mật khẩu dùng chung cho mọi trang đăng nhập
+        document.querySelectorAll('.toggle-pass').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var input = this.parentElement.querySelector('input');
+                var show = input.type === 'password';
+                input.type = show ? 'text' : 'password';
+                this.setAttribute('aria-label', show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+                this.querySelector('i').className = show ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
+            });
+        });
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -2,29 +2,29 @@
 @{
     var imgUrl = string.IsNullOrEmpty(Model.ImageUrl) ? "https://placehold.co/300x200?text=Foodie" : Model.ImageUrl;
 }
-<div class="card fd-card shadow-sm h-100 product-card position-relative" data-id="@Model.Id">
-    @if (Model.IsBestSeller)
+<div class="card fd-card h-100 product-card" data-id="@Model.Id">
+    @if (!Model.IsAvailable)
     {
-        <span class="badge bg-danger position-absolute top-0 start-0 m-2 rounded-pill px-2 py-1 shadow-xs fw-bold" style="z-index:2;font-size:10px;">
-            <i class="fa-solid fa-fire me-1"></i>BÁN CHẠY
-        </span>
+        <span class="fd-tag fd-tag-off">Tạm hết món</span>
+    }
+    else if (Model.IsBestSeller)
+    {
+        <span class="fd-tag fd-tag-hot"><i class="fa-solid fa-fire me-1"></i>Bán chạy</span>
     }
 
     <!-- Click vào ảnh dẫn đến trang chi tiết món ăn -->
     <a asp-controller="Menu" asp-action="Details" asp-route-id="@Model.Id" class="d-block overflow-hidden">
-        <img src="@imgUrl" class="fd-card-img card-img-top product-img" alt="@Model.Name" 
+        <img src="@imgUrl" class="fd-card-img product-img" alt="@Model.Name"
              onerror="this.src='https://placehold.co/300x200?text=Foodie';" />
     </a>
 
     <div class="card-body d-flex flex-column justify-content-between p-3">
         <div>
             <!-- Click vào tên dẫn đến chi tiết -->
-            <h6 class="card-title text-truncate mb-1">
-                <a asp-controller="Menu" asp-action="Details" asp-route-id="@Model.Id" class="text-decoration-none text-dark hover-brand" title="@Model.Name">
-                    @Model.Name
-                </a>
-            </h6>
-            <div class="fw-bold text-brand mb-2">@Model.BasePrice.ToString("N0")đ</div>
+            <h3 class="fd-card-title">
+                <a asp-controller="Menu" asp-action="Details" asp-route-id="@Model.Id" class="hover-brand" title="@Model.Name">@Model.Name</a>
+            </h3>
+            <div class="fd-price mb-2">@Model.BasePrice.ToString("N0")đ</div>
         </div>
 
         <div>
@@ -36,11 +36,11 @@
             </div>
 
             <div class="d-flex gap-2">
-                <button type="button" class="btn btn-outline-brand btn-sm fw-bold flex-fill add-cart-btn" title="Thêm vào giỏ"
+                <button type="button" class="btn btn-outline-brand btn-sm flex-fill add-cart-btn" title="Thêm vào giỏ" aria-label="Thêm vào giỏ"
                         @(Model.IsAvailable ? "" : "disabled")>
                     <i class="fa-solid fa-cart-plus"></i>
                 </button>
-                <button type="button" class="btn btn-brand btn-sm fw-bold flex-fill buy-now-btn"
+                <button type="button" class="btn btn-brand btn-sm flex-fill buy-now-btn"
                         @(Model.IsAvailable ? "" : "disabled")>
                     Mua ngay
                 </button>

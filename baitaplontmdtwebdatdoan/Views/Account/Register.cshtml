@@ -1,150 +1,103 @@
 @model baitaplontmdtwebdatdoan.Models.RegisterViewModel
 @{
     ViewData["Title"] = "Đăng ký";
-    Layout = null;
+    Layout = "_AuthLayout";
 }
 
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Đăng ký - Foodie</title>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <style>
-        .validation-summary-valid { display: none; }
-        .auth-page { min-height: 100vh; background: linear-gradient(135deg, #FFF3E6 0%, #FFFFFF 55%, #FFE8D1 100%); }
-        .auth-card { width: 100%; max-width: 480px; border: 0; border-radius: 20px; }
-        .auth-logo { width: 64px; height: 64px; border-radius: 18px; background: #FF7A00; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto; box-shadow: 0 8px 20px rgba(255,122,0,.35); }
-        .auth-card .input-group-text { background: #f8f9fa; border-right: 0; color: #6c757d; }
-        .auth-card .form-control { border-left: 0; }
-        .auth-card .form-control:focus { box-shadow: none; border-color: #FF7A00; }
-        .auth-card .input-group:focus-within .input-group-text { border-color: #FF7A00; color: #FF7A00; }
-        .auth-card .toggle-pass { border-left: 0; background: #f8f9fa; border-color: #dee2e6; color: #6c757d; }
-        .role-option { cursor: pointer; border: 2px solid #e9ecef; border-radius: 14px; padding: 12px; transition: all .15s ease; height: 100%; }
-        .role-option:hover { border-color: #FF7A00; }
-        .role-input:checked + .role-option { border-color: #FF7A00; background: #FFF6EE; box-shadow: 0 0 0 3px rgba(255,122,0,.15); }
-        #passStrength { height: 5px; border-radius: 4px; background: #e9ecef; overflow: hidden; }
-        #passStrengthBar { height: 100%; width: 0; transition: all .2s ease; }
-    </style>
-</head>
-<body>
-    <div class="auth-page d-flex align-items-center justify-content-center p-3">
-        <div class="card auth-card shadow p-4 p-sm-5 my-3">
-            <div class="text-center mb-4">
-                <div class="auth-logo"><i class="fa-solid fa-utensils"></i></div>
-                <h4 class="fw-bold text-brand mt-3 mb-1">Tạo tài khoản Foodie</h4>
-                <div class="text-muted small">Chỉ mất một phút để bắt đầu đặt món</div>
-            </div>
+<div class="auth-head">
+    <h1>Tạo tài khoản</h1>
+    <p>Mất chưa tới một phút để bắt đầu đặt món.</p>
+</div>
 
-            <form asp-controller="Account" asp-action="Register" asp-route-returnUrl="@ViewBag.ReturnUrl" method="post" novalidate>
-                <div asp-validation-summary="ModelOnly" class="alert alert-danger small py-2 mb-3"></div>
+<form asp-controller="Account" asp-action="Register" asp-route-returnUrl="@ViewBag.ReturnUrl" method="post" novalidate>
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger auth-summary"></div>
 
-                <div class="mb-3">
-                    <label asp-for="FullName" class="form-label small fw-semibold"></label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fa-regular fa-user"></i></span>
-                        <input asp-for="FullName" class="form-control" placeholder="Nguyễn Văn A" autocomplete="name" autofocus />
-                    </div>
-                    <span asp-validation-for="FullName" class="text-danger small"></span>
-                </div>
+    <div class="auth-field">
+        <label asp-for="FullName"></label>
+        <div class="auth-input">
+            <i class="fa-regular fa-user"></i>
+            <input asp-for="FullName" class="form-control" placeholder="Nguyễn Văn A" autocomplete="name" autofocus />
+        </div>
+        <span asp-validation-for="FullName" class="auth-error"></span>
+    </div>
 
-                <div class="mb-3">
-                    <label asp-for="Email" class="form-label small fw-semibold">Email</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fa-regular fa-envelope"></i></span>
-                        <input asp-for="Email" class="form-control" placeholder="you@example.com" autocomplete="email" />
-                    </div>
-                    <span asp-validation-for="Email" class="text-danger small"></span>
-                </div>
+    <div class="auth-field">
+        <label asp-for="Email">Email</label>
+        <div class="auth-input">
+            <i class="fa-regular fa-envelope"></i>
+            <input asp-for="Email" class="form-control" placeholder="you@example.com" autocomplete="email" />
+        </div>
+        <span asp-validation-for="Email" class="auth-error"></span>
+    </div>
 
-                <div class="mb-3">
-                    <label asp-for="Phone" class="form-label small fw-semibold"></label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fa-solid fa-phone"></i></span>
-                        <input asp-for="Phone" class="form-control" placeholder="0912345678" inputmode="tel" autocomplete="tel" />
-                    </div>
-                    <span asp-validation-for="Phone" class="text-danger small"></span>
-                </div>
+    <div class="auth-field">
+        <label asp-for="Phone"></label>
+        <div class="auth-input">
+            <i class="fa-solid fa-phone"></i>
+            <input asp-for="Phone" class="form-control" placeholder="0912345678" inputmode="tel" autocomplete="tel" />
+        </div>
+        <span asp-validation-for="Phone" class="auth-error"></span>
+    </div>
 
-                <div class="mb-3">
-                    <label asp-for="Password" class="form-label small fw-semibold"></label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
-                        <input asp-for="Password" class="form-control" placeholder="Tối thiểu 6 ký tự" autocomplete="new-password" />
-                        <button type="button" class="btn toggle-pass" tabindex="-1" title="Hiện/ẩn mật khẩu"><i class="fa-regular fa-eye"></i></button>
-                    </div>
-                    <div id="passStrength" class="mt-2"><div id="passStrengthBar"></div></div>
-                    <div id="passStrengthText" class="small text-muted mt-1" style="min-height:18px"></div>
-                    <span asp-validation-for="Password" class="text-danger small"></span>
-                </div>
+    <div class="auth-field">
+        <label asp-for="Password"></label>
+        <div class="auth-input">
+            <i class="fa-solid fa-lock"></i>
+            <input asp-for="Password" class="form-control" placeholder="Tối thiểu 6 ký tự" autocomplete="new-password" />
+            <button type="button" class="toggle-pass" tabindex="-1" aria-label="Hiện mật khẩu"><i class="fa-regular fa-eye"></i></button>
+        </div>
+        <div id="passStrength"><div id="passStrengthBar"></div></div>
+        <div id="passStrengthText"></div>
+        <span asp-validation-for="Password" class="auth-error"></span>
+    </div>
 
-                <div class="mb-3">
-                    <label asp-for="ConfirmPassword" class="form-label small fw-semibold"></label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
-                        <input asp-for="ConfirmPassword" class="form-control" placeholder="Nhập lại mật khẩu" autocomplete="new-password" />
-                        <button type="button" class="btn toggle-pass" tabindex="-1" title="Hiện/ẩn mật khẩu"><i class="fa-regular fa-eye"></i></button>
-                    </div>
-                    <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
-                </div>
+    <div class="auth-field">
+        <label asp-for="ConfirmPassword"></label>
+        <div class="auth-input">
+            <i class="fa-solid fa-lock"></i>
+            <input asp-for="ConfirmPassword" class="form-control" placeholder="Nhập lại mật khẩu" autocomplete="new-password" />
+            <button type="button" class="toggle-pass" tabindex="-1" aria-label="Hiện mật khẩu"><i class="fa-regular fa-eye"></i></button>
+        </div>
+        <span asp-validation-for="ConfirmPassword" class="auth-error"></span>
+    </div>
 
-                <div class="mb-4">
-                    <label class="form-label small fw-semibold">Bạn đăng ký với vai trò</label>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <label class="d-block h-100 mb-0">
-                                <input type="radio" name="Role" value="customer" class="role-input d-none" @(Model.Role != "restaurant_owner" ? "checked" : "") />
-                                <div class="role-option text-center">
-                                    <i class="fa-solid fa-bag-shopping fs-4 text-brand"></i>
-                                    <div class="fw-bold small mt-1">Khách hàng</div>
-                                    <div class="text-muted" style="font-size:11px">Đặt món ăn</div>
-                                </div>
-                            </label>
-                        </div>
-                        <div class="col-6">
-                            <label class="d-block h-100 mb-0">
-                                <input type="radio" name="Role" value="restaurant_owner" class="role-input d-none" @(Model.Role == "restaurant_owner" ? "checked" : "") />
-                                <div class="role-option text-center">
-                                    <i class="fa-solid fa-store fs-4 text-brand"></i>
-                                    <div class="fw-bold small mt-1">Chủ nhà hàng</div>
-                                    <div class="text-muted" style="font-size:11px">Bán đồ ăn</div>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn btn-brand w-100 fw-bold py-2 rounded-3">
-                    <i class="fa-solid fa-user-plus me-1"></i> Đăng ký
-                </button>
-            </form>
-
-            <div class="text-center mt-4 small">
-                Đã có tài khoản?
-                <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="@ViewBag.ReturnUrl" class="text-brand fw-semibold text-decoration-none">Đăng nhập</a>
-            </div>
-            <div class="text-center mt-2 small">
-                <a href="/" class="text-muted text-decoration-none"><i class="fa-solid fa-arrow-left me-1"></i>Về trang chủ</a>
-            </div>
+    <div class="auth-field">
+        <label>Bạn đăng ký với vai trò</label>
+        <div class="role-grid">
+            <label class="role-card">
+                <input type="radio" name="Role" value="customer" @(Model.Role != "restaurant_owner" ? "checked" : "") />
+                <span class="role-body">
+                    <i class="fa-solid fa-bag-shopping"></i>
+                    <span>
+                        <span class="role-title d-block">Khách hàng</span>
+                        <span class="role-sub d-block">Đặt món ăn</span>
+                    </span>
+                </span>
+            </label>
+            <label class="role-card">
+                <input type="radio" name="Role" value="restaurant_owner" @(Model.Role == "restaurant_owner" ? "checked" : "") />
+                <span class="role-body">
+                    <i class="fa-solid fa-store"></i>
+                    <span>
+                        <span class="role-title d-block">Chủ nhà hàng</span>
+                        <span class="role-sub d-block">Bán đồ ăn</span>
+                    </span>
+                </span>
+            </label>
         </div>
     </div>
 
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
-    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
-    <script>
-        document.querySelectorAll('.toggle-pass').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var input = this.parentElement.querySelector('input');
-                var show = input.type === 'password';
-                input.type = show ? 'text' : 'password';
-                this.querySelector('i').className = show ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
-            });
-        });
+    <button type="submit" class="btn btn-brand auth-submit">Tạo tài khoản</button>
+</form>
 
+<p class="auth-alt">
+    Đã có tài khoản?
+    <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="@ViewBag.ReturnUrl">Đăng nhập</a>
+</p>
+<a href="/" class="auth-back"><i class="fa-solid fa-arrow-left me-1"></i>Về trang chủ</a>
+
+@section Scripts {
+    <script>
         // Thanh đo độ mạnh mật khẩu (chỉ gợi ý, không chặn đăng ký)
         var passInput = document.getElementById('Password');
         var bar = document.getElementById('passStrengthBar');
@@ -158,16 +111,17 @@
                 if (/\d/.test(v) && /[^A-Za-z0-9]/.test(v)) score++;
                 if (!v) score = -1;
                 var levels = [
-                    { w: '25%', c: '#dc3545', t: 'Yếu' },
-                    { w: '50%', c: '#fd7e14', t: 'Trung bình' },
-                    { w: '75%', c: '#ffc107', t: 'Khá' },
-                    { w: '100%', c: '#198754', t: 'Mạnh' }
+                    { w: '25%', c: '#B3261E', t: 'Yếu' },
+                    { w: '50%', c: '#E8590C', t: 'Trung bình' },
+                    { w: '75%', c: '#E8A317', t: 'Khá' },
+                    { w: '100%', c: '#1E7B4F', t: 'Mạnh' }
                 ];
-                if (score < 0) { bar.style.width = '0'; txt.textContent = ''; return; }
+                var track = document.getElementById('passStrength');
+                if (score < 0) { track.style.display = 'none'; bar.style.width = '0'; txt.textContent = ''; return; }
+                track.style.display = 'block';
                 var lv = levels[Math.min(Math.max(score - 1, 0), 3)];
                 bar.style.width = lv.w; bar.style.background = lv.c; txt.textContent = 'Độ mạnh: ' + lv.t;
             });
         }
     </script>
-</body>
-</html>
+}

@@ -1,0 +1,168 @@
+/* =====================================================================
+   FOODIE - TRANG ĐĂNG NHẬP / ĐĂNG KÝ / QUÊN MẬT KHẨU
+   Dùng chung cho 4 view trong Views/Account thông qua _AuthLayout.
+   ===================================================================== */
+
+.auth-body { background: #fff; }
+
+.auth-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    min-height: 100vh;
+}
+
+/* ---------- Cột trái: giới thiệu ---------- */
+.auth-aside {
+    position: relative;
+    overflow: hidden;
+    background: var(--leaf);
+    color: #fff;
+    padding: 2.5rem 3rem;
+    display: flex;
+    flex-direction: column;
+}
+/* Các vòng tròn đồng tâm: miệng bát nhìn từ trên xuống */
+.auth-aside::before, .auth-aside::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 106, 19, .5);
+    pointer-events: none;
+}
+.auth-aside::before { width: 520px; height: 520px; right: -190px; bottom: -190px; }
+.auth-aside::after { width: 340px; height: 340px; right: -100px; bottom: -100px; border-color: rgba(255, 255, 255, .14); }
+
+.auth-logo { display: inline-flex; align-items: center; gap: .65rem; color: #fff; position: relative; z-index: 1; }
+.auth-logo:hover { color: #fff; }
+.auth-logo-mark {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: var(--brand);
+    display: grid;
+    place-items: center;
+    font-size: 1.1rem;
+}
+.auth-logo-name { font-weight: 800; font-size: 1.4rem; letter-spacing: -.025em; }
+
+.auth-aside-body { margin-top: auto; margin-bottom: auto; padding: 3rem 0; position: relative; z-index: 1; max-width: 30rem; }
+.auth-aside h2 { color: #fff; font-size: clamp(2rem, 3.2vw, 2.9rem); font-weight: 800; line-height: 1.08; letter-spacing: -.03em; margin: 0 0 1.75rem; }
+.auth-points { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
+.auth-points li { display: flex; align-items: flex-start; gap: .85rem; color: rgba(255, 255, 255, .86); font-size: .9375rem; line-height: 1.45; }
+.auth-points i {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, .1);
+    color: var(--brand);
+    display: grid;
+    place-items: center;
+    font-size: .9rem;
+}
+.auth-points strong { display: block; color: #fff; font-weight: 700; }
+
+/* ---------- Cột phải: biểu mẫu ---------- */
+.auth-main { display: flex; align-items: center; justify-content: center; padding: 2.5rem 1.5rem; background: var(--paper); }
+.auth-panel { width: 100%; max-width: 420px; }
+.auth-mobile-logo { display: none; }
+
+.auth-head h1 { font-size: 1.75rem; font-weight: 800; letter-spacing: -.025em; margin: 0 0 .4rem; }
+.auth-head p { color: var(--muted); margin: 0 0 1.75rem; }
+
+.auth-field { margin-bottom: 1.1rem; }
+.auth-field > label, .auth-label-row > label { display: block; font-size: .8125rem; font-weight: 600; color: var(--ink-soft); margin-bottom: .35rem; }
+.auth-label-row { display: flex; align-items: baseline; justify-content: space-between; }
+.auth-label-row a { font-size: .8125rem; font-weight: 600; }
+.auth-label-row a:hover { color: var(--brand-strong); }
+
+.auth-input {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    padding: 0 .35rem 0 .9rem;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+.auth-input:focus-within { border-color: var(--leaf-600); box-shadow: 0 0 0 3px rgba(29, 92, 66, .16); }
+.auth-input > i { color: var(--muted); width: 1.1rem; text-align: center; flex-shrink: 0; }
+.auth-input .form-control {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: .72rem .7rem;
+}
+.auth-input .toggle-pass {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    flex-shrink: 0;
+}
+.auth-input .toggle-pass:hover { background: var(--chip); color: var(--ink); }
+.auth-input:has(.input-validation-error) { border-color: var(--danger); }
+.auth-input:has(.input-validation-error):focus-within { box-shadow: 0 0 0 3px rgba(179, 38, 30, .14); }
+
+.auth-error { display: block; margin-top: .3rem; font-size: .8125rem; color: var(--danger); }
+.auth-error:empty { display: none; }
+
+.auth-summary.validation-summary-errors, .auth-summary:not(.validation-summary-valid) { margin-bottom: 1.1rem; }
+.auth-summary ul { margin: 0; padding-left: 1.1rem; }
+
+.auth-submit { width: 100%; padding: .8rem 1rem; font-size: 1rem; border-radius: 12px; margin-top: .4rem; }
+.auth-alt { margin: 1.5rem 0 0; color: var(--muted); font-size: .875rem; }
+.auth-alt a { font-weight: 700; }
+.auth-alt a:hover { color: var(--brand-strong); }
+.auth-back { display: inline-block; margin-top: .6rem; font-size: .8125rem; color: var(--muted); }
+.auth-back:hover { color: var(--ink); }
+
+/* ---------- Chọn vai trò khi đăng ký ---------- */
+.role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.role-card { position: relative; display: block; margin: 0; cursor: pointer; }
+.role-card input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.role-body {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    padding: .75rem .85rem;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid var(--line-strong);
+    transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+.role-body > i { width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; background: var(--chip); color: var(--leaf-600); display: grid; place-items: center; }
+.role-title { font-weight: 700; font-size: .875rem; line-height: 1.25; }
+.role-sub { font-size: .75rem; color: var(--muted); line-height: 1.25; }
+.role-card:hover .role-body { border-color: var(--leaf-600); }
+.role-card input:checked + .role-body { border-color: var(--leaf); background: var(--leaf-tint); box-shadow: 0 0 0 1px var(--leaf); }
+.role-card input:checked + .role-body > i { background: var(--leaf); color: #fff; }
+.role-card input:focus-visible + .role-body { outline: 2px solid var(--leaf-600); outline-offset: 2px; }
+
+/* ---------- Độ mạnh mật khẩu ---------- */
+#passStrength { display: none; height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: .55rem; }
+#passStrengthBar { height: 100%; width: 0; transition: width .2s ease, background-color .2s ease; }
+#passStrengthText { font-size: .75rem; color: var(--muted); margin-top: .3rem; }
+#passStrengthText:empty { display: none; }
+
+/* ---------- Mã xác nhận 6 số ---------- */
+.code-input { letter-spacing: .5rem; font-size: 1.4rem; font-weight: 700; text-align: center; padding-left: 1.2rem !important; }
+
+/* ---------- Màn hình nhỏ ---------- */
+@media (max-width: 991.98px) {
+    .auth-shell { grid-template-columns: minmax(0, 1fr); }
+    .auth-aside { display: none; }
+    .auth-main { align-items: flex-start; padding: 1.75rem 1.25rem 2.5rem; min-height: 100vh; }
+    .auth-mobile-logo { display: inline-flex; align-items: center; gap: .6rem; color: var(--ink); margin-bottom: 1.75rem; }
+    .auth-mobile-logo:hover { color: var(--ink); }
+    .auth-mobile-logo .auth-logo-mark { width: 38px; height: 38px; color: #fff; }
+}
+@media (max-width: 400px) {
+    .role-grid { grid-template-columns: 1fr; }
+}

@@ -108,7 +108,7 @@ else
             <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
                 <span class="text-brand">●</span> @group.Key (@group.Count())
             </h5>
-            <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-3">
+            <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-3 row-cols-xl-4 row-cols-xxl-5 g-3">
                 @foreach (var item in group)
                 {
                     <div class="col">
@@ -145,7 +145,7 @@ else
                     <div class="p-3 border rounded-3 bg-light h-100">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div class="d-flex align-items-center gap-2">
-                                <img src="https://ui-avatars.com/api/?name=@(rev.User?.FullName ?? "Khách")&background=FF7A00&color=fff" 
+                                <img src="https://ui-avatars.com/api/?name=@(rev.User?.FullName ?? "Khách")&background=14402E&color=fff" 
                                      class="rounded-circle" width="36" height="36" alt="avatar" />
                                 <div>
                                     <div class="fw-semibold small">@(rev.User?.FullName ?? "Khách hàng ẩn danh")</div>
@@ -191,7 +191,7 @@ else
     
     <!-- Chat Header -->
     <div class="p-3 text-white d-flex justify-content-between align-items-center" 
-         style="background: linear-gradient(135deg, #FF7A00 0%, #FF5500 100%);">
+         style="background: var(--leaf);">
         <div class="d-flex align-items-center gap-2">
             <div class="position-relative">
                 <img src="@(string.IsNullOrEmpty(Model.Restaurant.LogoUrl) ? "https://placehold.co/60x60?text=Food" : Model.Restaurant.LogoUrl)" 

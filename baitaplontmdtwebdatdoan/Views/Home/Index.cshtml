@@ -17,39 +17,34 @@
 }
 
 <!-- BANNER -->
-<a href="#" class="d-block mb-4">
-    <img src="/images/banner/banner-1.png" alt="Foodie - Đặt món ngon giao tận nơi"
-         class="img-fluid w-100 rounded-4 shadow-sm" />
+<a asp-controller="Menu" asp-action="Index" class="fd-hero">
+    <img src="/images/banner/banner-1.png" alt="Foodie - Đặt món ngon giao tận nơi" />
 </a>
 
-<!-- CATEGORY STRIP (CLICKABLE & DIVERSE ICONS) -->
+<!-- DANH MỤC -->
 @if (Model.Categories.Any())
 {
-    <div class="bg-white rounded-4 shadow-sm p-3 mb-4 d-flex gap-3 overflow-auto">
-        <a asp-controller="Menu" asp-action="Index" class="text-decoration-none text-dark text-center flex-shrink-0" style="width:80px">
-            <div class="fd-cat-icon mx-auto mb-2 bg-brand text-white shadow-sm">
-                <i class="fa-solid fa-border-all"></i>
-            </div>
-            <div class="small fw-bold text-truncate">Tất cả</div>
+    <nav class="fd-cats" aria-label="Danh mục món ăn">
+        <a asp-controller="Menu" asp-action="Index" class="fd-cat is-all">
+            <div class="fd-cat-icon"><i class="fa-solid fa-border-all"></i></div>
+            <div class="fd-cat-label">Tất cả</div>
         </a>
         @foreach (var cat in Model.Categories)
         {
-            <a asp-controller="Menu" asp-action="Index" asp-route-category="@cat" class="text-decoration-none text-dark text-center flex-shrink-0" style="width:80px">
-                <div class="fd-cat-icon mx-auto mb-2 shadow-xs">
-                    <i class="fa-solid @GetCategoryIcon(cat)"></i>
-                </div>
-                <div class="small fw-semibold text-truncate">@cat</div>
+            <a asp-controller="Menu" asp-action="Index" asp-route-category="@cat" class="fd-cat">
+                <div class="fd-cat-icon"><i class="fa-solid @GetCategoryIcon(cat)"></i></div>
+                <div class="fd-cat-label" title="@cat">@cat</div>
             </a>
         }
-    </div>
+    </nav>
 }
 
 <!-- MÓN ĂN NỔI BẬT -->
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="fw-bold mb-0">🍔 MÓN ĂN NỔI BẬT</h5>
-    <a asp-controller="Menu" asp-action="Index" class="text-brand small fw-semibold">Xem tất cả <i class="fa-solid fa-chevron-right ms-1 small"></i></a>
+<div class="fd-section-head">
+    <h2>Món ăn nổi bật</h2>
+    <a asp-controller="Menu" asp-action="Index" class="fd-more">Xem tất cả <i class="fa-solid fa-chevron-right ms-1 small"></i></a>
 </div>
-<div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-3 mb-5">
+<div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-3 row-cols-xl-4 row-cols-xxl-5 g-3 mb-5">
     @foreach (var item in Model.FeaturedItems)
     {
         <div class="col">
@@ -59,30 +54,28 @@
 </div>
 
 <!-- NHÀ HÀNG NỔI BẬT -->
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="fw-bold mb-0">🏪 NHÀ HÀNG NỔI BẬT</h5>
-    <a asp-controller="Restaurant" asp-action="Index" class="text-brand small fw-semibold">Xem tất cả <i class="fa-solid fa-chevron-right ms-1 small"></i></a>
+<div class="fd-section-head">
+    <h2>Nhà hàng nổi bật</h2>
+    <a asp-controller="Restaurant" asp-action="Index" class="fd-more">Xem tất cả <i class="fa-solid fa-chevron-right ms-1 small"></i></a>
 </div>
-<div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-3 mb-5">
+<div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-3 row-cols-xl-4 row-cols-xxl-5 g-3 mb-5">
     @foreach (var r in Model.FeaturedRestaurants)
     {
         <div class="col">
-            <div class="card fd-card shadow-sm h-100 position-relative">
-                <button type="button" class="btn btn-light btn-sm rounded-circle shadow-xs position-absolute top-0 end-0 m-2 toggle-fav-btn" 
-                        data-restaurant-id="@r.Id" style="z-index:3; width:32px; height:32px;" title="Thêm vào yêu thích">
+            <div class="card fd-card h-100">
+                <button type="button" class="fd-fav toggle-fav-btn" data-restaurant-id="@r.Id" title="Thêm vào yêu thích" aria-label="Thêm vào yêu thích">
                     <i class="fa-regular fa-heart text-secondary"></i>
                 </button>
                 <a asp-controller="Restaurant" asp-action="Details" asp-route-id="@r.Id" class="text-decoration-none text-dark d-flex flex-column h-100">
                     <img src="@(string.IsNullOrEmpty(r.CoverImageUrl) ? "https://placehold.co/300x200?text=Restaurant" : r.CoverImageUrl)"
-                         class="fd-card-img card-img-top" alt="@r.Name" 
+                         class="fd-card-img" alt="@r.Name"
                          onerror="this.src='https://placehold.co/300x200?text=Restaurant';" />
-                    <div class="card-body p-3 d-flex flex-column justify-content-between">
-                        <div>
-                            <h6 class="card-title text-truncate fw-bold mb-1">@r.Name</h6>
-                            <div class="small text-muted">
-                                <i class="fa-solid fa-star text-warning"></i> @(r.AvgRating > 0 ? r.AvgRating.ToString("0.0") : "5.0")
-                                &middot; @r.PrepTimeMinutes phút
-                            </div>
+                    <div class="p-3">
+                        <h3 class="h6 text-truncate fw-bold mb-1">@r.Name</h3>
+                        <div class="fd-rest-meta">
+                            <span><i class="fa-solid fa-star text-warning"></i> @(r.AvgRating > 0 ? r.AvgRating.ToString("0.0") : "5.0")</span>
+                            <span class="dot"></span>
+                            <span>@r.PrepTimeMinutes phút</span>
                         </div>
                     </div>
                 </a>
@@ -91,118 +84,70 @@
     }
 </div>
 
-<!-- ===== BANNER QUẢNG CÁO NỔI Ở MÀN HÌNH CHÍNH (FLOATING POPUP BANNER & FLOATING WIDGET) ===== -->
+<!-- ===== ƯU ĐÃI: HỘP THOẠI + NÚT NỔI ===== -->
 
-<!-- 1. POPUP BANNER QUẢNG CÁO NỔI (MODAL) -->
-<div class="modal fade" id="promoFloatingModal" tabindex="-1" aria-labelledby="promoFloatingModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="max-width: 520px;">
-        <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden position-relative">
-            <!-- Nút đóng nổi bật -->
-            <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 z-3 shadow" data-bs-dismiss="modal" aria-label="Close" style="background-color:rgba(0,0,0,0.5); padding:10px; border-radius:50%"></button>
+<!-- 1. Hộp thoại ưu đãi -->
+<div class="modal fade fd-promo" id="promoFloatingModal" tabindex="-1" aria-labelledby="promoFloatingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content overflow-hidden position-relative">
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Đóng"></button>
 
-            <!-- Header Banner Thiết Kế Rực Rỡ -->
-            <div class="p-4 text-white text-center position-relative overflow-hidden" 
-                 style="background: linear-gradient(135deg, #FF5500 0%, #FF7A00 50%, #FFAA00 100%);">
-                <div class="position-absolute top-0 start-0 w-100 h-100 opacity-25" 
-                     style="background-image: radial-gradient(#fff 15%, transparent 16%); background-size: 16px 16px;"></div>
-                
-                <span class="badge bg-white text-danger fw-bold px-3 py-1 rounded-pill mb-2 shadow-xs text-uppercase letter-spacing-1">
-                    <i class="fa-solid fa-fire text-danger me-1"></i>SIÊU ĐẠI TIỆC ẨM THỰC
-                </span>
-                <h3 class="fw-black mb-1 text-white text-shadow">GIẢM ĐẾN 50K & FREESHIP</h3>
-                <p class="small text-white-50 mb-0">Hàng ngàn món ngon từ các thương hiệu hàng đầu đang chờ bạn!</p>
+            <div class="fd-promo-head">
+                <h3 id="promoFloatingModalLabel">Giảm đến 50K và freeship</h3>
+                <p>Lưu mã bên dưới, dùng khi thanh toán.</p>
             </div>
 
-            <!-- Body Banner: Các mã ưu đãi -->
-            <div class="modal-body p-4 bg-light">
-                <div class="d-flex flex-column gap-3 mb-3">
-                    <!-- Voucher 1 -->
-                    <div class="bg-white rounded-3 p-3 border d-flex justify-content-between align-items-center shadow-xs">
+            <div class="modal-body p-4">
+                <div class="d-flex flex-column gap-3 mb-4">
+                    <div class="fd-ticket">
                         <div class="d-flex align-items-center gap-3">
-                            <div class="p-2 rounded-3 bg-danger-subtle text-danger fs-3 d-flex align-items-center justify-content-center" style="width:50px;height:50px">
-                                <i class="fa-solid fa-percent"></i>
-                            </div>
+                            <div class="fd-ticket-icon bg-danger-subtle text-danger"><i class="fa-solid fa-percent"></i></div>
                             <div>
-                                <div class="fw-bold text-dark">Giảm 50.000đ đơn từ 100K</div>
-                                <div class="text-muted small">Mã: <span class="badge bg-danger-subtle text-danger font-monospace px-2 py-1 fs-6">FOODIE50</span></div>
+                                <div class="fw-bold">Giảm 50.000đ đơn từ 100K</div>
+                                <span class="fd-code">FOODIE50</span>
                             </div>
                         </div>
-                        <button type="button" class="btn btn-outline-brand btn-sm fw-bold rounded-pill px-3 copy-voucher-code" data-code="FOODIE50">
-                            Lấy mã
-                        </button>
+                        <button type="button" class="btn btn-outline-brand btn-sm rounded-pill px-3 copy-voucher-code" data-code="FOODIE50">Lấy mã</button>
                     </div>
 
-                    <!-- Voucher 2 -->
-                    <div class="bg-white rounded-3 p-3 border d-flex justify-content-between align-items-center shadow-xs">
+                    <div class="fd-ticket">
                         <div class="d-flex align-items-center gap-3">
-                            <div class="p-2 rounded-3 bg-success-subtle text-success fs-3 d-flex align-items-center justify-content-center" style="width:50px;height:50px">
-                                <i class="fa-solid fa-truck-fast"></i>
-                            </div>
+                            <div class="fd-ticket-icon bg-success-subtle text-success"><i class="fa-solid fa-truck-fast"></i></div>
                             <div>
-                                <div class="fw-bold text-dark">Freeship 15.000đ Toàn Sàn</div>
-                                <div class="text-muted small">Mã: <span class="badge bg-success-subtle text-success font-monospace px-2 py-1 fs-6">FREESHIP</span></div>
+                                <div class="fw-bold">Freeship 15.000đ toàn sàn</div>
+                                <span class="fd-code">FREESHIP</span>
                             </div>
                         </div>
-                        <button type="button" class="btn btn-outline-success btn-sm fw-bold rounded-pill px-3 copy-voucher-code" data-code="FREESHIP">
-                            Lấy mã
-                        </button>
+                        <button type="button" class="btn btn-outline-success btn-sm rounded-pill px-3 copy-voucher-code" data-code="FREESHIP">Lấy mã</button>
                     </div>
                 </div>
 
-                <!-- Nút Đặt món ngay -->
-                <a asp-controller="Menu" asp-action="Index" class="btn btn-brand w-100 fw-bold py-3 fs-6 rounded-3 shadow text-uppercase">
-                    <i class="fa-solid fa-utensils me-2"></i>Khám phá món ngon & Đặt ngay
+                <a asp-controller="Menu" asp-action="Index" class="btn btn-brand w-100 fw-bold py-2">
+                    <i class="fa-solid fa-utensils me-2"></i>Xem thực đơn và đặt ngay
                 </a>
 
-                <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                <div class="d-flex justify-content-between align-items-center mt-3">
                     <div class="form-check form-switch mb-0">
                         <input class="form-check-input" type="checkbox" id="dontShowPromoToday">
                         <label class="form-check-label text-muted small" for="dontShowPromoToday">Không hiện lại hôm nay</label>
                     </div>
-                    <button type="button" class="btn btn-link text-muted small p-0 text-decoration-none" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-link text-muted small p-0" data-bs-dismiss="modal">Đóng</button>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- 2. NÚT BANNER NỔI GÓC MÀN HÌNH (FLOATING PROMO BUTTON) -->
-<div id="floatingPromoWidget" class="position-fixed" style="bottom: 25px; right: 25px; z-index: 1050;">
-    <button type="button" class="btn btn-brand rounded-pill shadow-lg d-flex align-items-center gap-2 px-3 py-2 border border-2 border-white floating-badge-pulse"
-            data-bs-toggle="modal" data-bs-target="#promoFloatingModal" title="Xem ưu đãi siêu hot!">
-        <div class="rounded-circle bg-white text-brand d-flex align-items-center justify-content-center" style="width:32px; height:32px;">
-            <i class="fa-solid fa-gift fs-6 text-danger"></i>
-        </div>
-        <div class="text-start pe-1 text-white">
-            <div class="fw-bold small lh-1">Ưu Đãi HOT</div>
-            <div style="font-size: 11px; opacity: 0.9;">Giảm đến 50K <i class="fa-solid fa-bolt text-warning ms-1"></i></div>
-        </div>
+<!-- 2. Nút ưu đãi nổi ở góc màn hình -->
+<div id="floatingPromoWidget" class="fd-fab">
+    <button type="button" class="btn" data-bs-toggle="modal" data-bs-target="#promoFloatingModal" title="Xem ưu đãi hôm nay">
+        <span class="fd-fab-icon"><i class="fa-solid fa-gift"></i></span>
+        <span class="fd-fab-text">
+            <span class="fd-fab-title d-block">Ưu đãi hôm nay</span>
+            <span class="fd-fab-sub d-block">Giảm đến 50K</span>
+        </span>
     </button>
 </div>
-
-<style>
-    .floating-badge-pulse {
-        animation: pulseAnimation 2.2s infinite ease-in-out;
-        transition: transform 0.2s ease;
-    }
-    .floating-badge-pulse:hover {
-        transform: scale(1.06);
-    }
-    @@keyframes pulseAnimation {
-        0% {
-            box-shadow: 0 0 0 0 rgba(255, 122, 0, 0.7);
-        }
-        70% {
-            box-shadow: 0 0 0 14px rgba(255, 122, 0, 0);
-        }
-        100% {
-            box-shadow: 0 0 0 0 rgba(255, 122, 0, 0);
-        }
-    }
-    .text-shadow {
-        text-shadow: 0 2px 4px rgba(0,0,0,0.25);
-    }
-</style>
 
 @section Scripts {
     <script>
