@@ -1,6 +1,6 @@
 @model baitaplontmdtwebdatdoan.Models.MenuItem
 @{
-    var imgUrl = string.IsNullOrEmpty(Model.ImageUrl) ? "https://placehold.co/300x200?text=Foodie" : Model.ImageUrl;
+    var imgUrl = string.IsNullOrWhiteSpace(Model.PrimaryImageUrl) ? "https://placehold.co/300x200?text=Foodie" : Model.PrimaryImageUrl;
 }
 <div class="card fd-card h-100 product-card" data-id="@Model.Id">
     @if (!Model.IsAvailable)

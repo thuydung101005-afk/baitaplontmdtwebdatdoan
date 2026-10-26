@@ -331,6 +331,213 @@ namespace baitaplontmdtwebdatdoan.Controllers
             return RedirectToAction("Login");
         }
 
+        // ===== THÔNG TIN TÀI KHOẢN (PROFILE) =====
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> Profile(string? tab = "info")
+        {
+            var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!long.TryParse(idClaim, out var userId))
+                return RedirectToAction("Login");
+
+            var user = await _context.Users
+                .Include(u => u.Addresses)
+                .FirstOrDefaultAsync(u => u.Id == userId && u.DeletedAt == null);
+
+            if (user == null)
+            {
+                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                return RedirectToAction("Login");
+            }
+
+            ViewBag.ActiveTab = tab ?? "info";
+
+            var vm = new ProfileViewModel
+            {
+                Id = user.Id,
+                FullName = user.FullName,
+                Email = user.Email,
+                Phone = user.Phone,
+                Role = user.Role,
+                AvatarUrl = user.AvatarUrl,
+                CreatedAt = user.CreatedAt,
+                Addresses = user.Addresses.OrderByDescending(a => a.IsDefault).ThenByDescending(a => a.CreatedAt).ToList()
+            };
+
+            return View(vm);
+        }
+
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateProfile(ProfileViewModel model)
+        {
+            var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!long.TryParse(idClaim, out var userId))
+                return RedirectToAction("Login");
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId && u.DeletedAt == null);
+            if (user == null) return RedirectToAction("Login");
+
+            var phone = NormalizePhone(model.Phone);
+            var fullName = (model.FullName ?? string.Empty).Trim();
+
+            if (string.IsNullOrWhiteSpace(fullName))
+            {
+                TempData["Error"] = "Họ và tên không được để trống.";
+                return RedirectToAction("Profile", new { tab = "info" });
+            }
+
+            if (string.IsNullOrWhiteSpace(phone))
+            {
+                TempData["Error"] = "Số điện thoại không được để trống.";
+                return RedirectToAction("Profile", new { tab = "info" });
+            }
+
+            // Kiểm tra trùng số điện thoại với tài khoản khác
+            if (await _context.Users.AnyAsync(u => u.Phone == phone && u.Id != user.Id))
+            {
+                TempData["Error"] = "Số điện thoại này đã được sử dụng bởi tài khoản khác.";
+                return RedirectToAction("Profile", new { tab = "info" });
+            }
+
+            // Xử lý tải ảnh đại diện
+            if (model.AvatarFile != null && model.AvatarFile.Length > 0)
+            {
+                string uploadFolder = Path.Combine(_env.WebRootPath, "images", "avatars");
+                if (!Directory.Exists(uploadFolder))
+                {
+                    Directory.CreateDirectory(uploadFolder);
+                }
+
+                string uniqueFileName = $"avatar_{Guid.NewGuid()}_{Path.GetFileName(model.AvatarFile.FileName)}";
+                string filePath = Path.Combine(uploadFolder, uniqueFileName);
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await model.AvatarFile.CopyToAsync(fileStream);
+                }
+                user.AvatarUrl = $"/images/avatars/{uniqueFileName}";
+            }
+            else if (!string.IsNullOrWhiteSpace(model.AvatarUrl))
+            {
+                user.AvatarUrl = model.AvatarUrl.Trim();
+            }
+
+            user.FullName = fullName;
+            user.Phone = phone;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            // Cập nhật lại Claims identity để tên mới hiển thị trên Header ngay lập tức
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.FullName),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Role, user.Role)
+            };
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
+
+            TempData["SuccessMessage"] = "Cập nhật thông tin cá nhân và ảnh đại diện thành công!";
+            return RedirectToAction("Profile", new { tab = "info" });
+        }
+
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ChangePassword(ChangePasswordViewModel model)
+        {
+            var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!long.TryParse(idClaim, out var userId))
+                return RedirectToAction("Login");
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId && u.DeletedAt == null);
+            if (user == null) return RedirectToAction("Login");
+
+            if (!ModelState.IsValid)
+            {
+                TempData["Error"] = "Thông tin đổi mật khẩu không hợp lệ. Vui lòng kiểm tra lại.";
+                return RedirectToAction("Profile", new { tab = "password" });
+            }
+
+            if (!BCrypt.Net.BCrypt.Verify(model.CurrentPassword, user.PasswordHash))
+            {
+                TempData["Error"] = "Mật khẩu hiện tại không chính xác.";
+                return RedirectToAction("Profile", new { tab = "password" });
+            }
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Đổi mật khẩu thành công!";
+            return RedirectToAction("Profile", new { tab = "password" });
+        }
+
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddAddress(AddressFormModel model)
+        {
+            var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!long.TryParse(idClaim, out var userId))
+                return RedirectToAction("Login");
+
+            if (string.IsNullOrWhiteSpace(model.ReceiverName) || string.IsNullOrWhiteSpace(model.ReceiverPhone) || string.IsNullOrWhiteSpace(model.AddressLine))
+            {
+                TempData["Error"] = "Vui lòng nhập đầy đủ tên người nhận, số điện thoại và địa chỉ nhận hàng.";
+                return RedirectToAction("Profile", new { tab = "address" });
+            }
+
+            if (model.IsDefault)
+            {
+                var existingDefault = await _context.Addresses.Where(a => a.UserId == userId && a.IsDefault).ToListAsync();
+                foreach (var a in existingDefault) a.IsDefault = false;
+            }
+
+            var address = new Address
+            {
+                UserId = userId,
+                Label = model.Label ?? "Nhà riêng",
+                ReceiverName = model.ReceiverName.Trim(),
+                ReceiverPhone = NormalizePhone(model.ReceiverPhone),
+                AddressLine = model.AddressLine.Trim(),
+                Ward = model.Ward?.Trim(),
+                District = model.District?.Trim(),
+                City = model.City?.Trim(),
+                IsDefault = model.IsDefault,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Addresses.Add(address);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Đã thêm địa chỉ giao hàng mới!";
+            return RedirectToAction("Profile", new { tab = "address" });
+        }
+
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteAddress(long id)
+        {
+            var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!long.TryParse(idClaim, out var userId))
+                return RedirectToAction("Login");
+
+            var address = await _context.Addresses.FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId);
+            if (address != null)
+            {
+                _context.Addresses.Remove(address);
+                await _context.SaveChangesAsync();
+                TempData["SuccessMessage"] = "Đã xoá địa chỉ giao hàng.";
+            }
+
+            return RedirectToAction("Profile", new { tab = "address" });
+        }
+
         // ===== ĐĂNG XUẤT =====
         [HttpPost]
         [ValidateAntiForgeryToken]

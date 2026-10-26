@@ -1,0 +1,245 @@
+@model baitaplontmdtwebdatdoan.Models.RestaurantSettingsViewModel
+@{
+    ViewData["Title"] = "Cài đặt hồ sơ & Ảnh nhà hàng - " + ViewBag.RestaurantName;
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h4 class="fw-bold mb-1">🏪 @ViewBag.RestaurantName</h4>
+        @if (ViewBag.RestaurantStatus == "pending_approval")
+        {
+            <span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>Đang chờ admin duyệt</span>
+        }
+        else
+        {
+            <span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Đang hoạt động</span>
+        }
+    </div>
+    <div>
+        <a asp-controller="Restaurant" asp-action="Details" asp-route-id="@Model.Id" target="_blank" class="btn btn-outline-brand fw-semibold px-3 py-2 rounded-3">
+            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Xem trang quán ngoài web
+        </a>
+    </div>
+</div>
+
+<!-- TABS NAVIGATION -->
+<ul class="nav nav-pills mb-4 bg-white p-2 rounded-4 shadow-sm" style="width:fit-content">
+    <li class="nav-item">
+        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Orders">
+            <i class="fa-solid fa-receipt me-2"></i>Đơn hàng
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Menu">
+            <i class="fa-solid fa-utensils me-2"></i>Thực đơn món ăn
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Revenue">
+            <i class="fa-solid fa-chart-line me-2 text-success"></i>Doanh thu & Tài chính
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="Chat" asp-action="ShopInbox">
+            <i class="fa-regular fa-comments me-2 text-primary"></i>Tin nhắn khách
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active bg-brand text-white fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Settings">
+            <i class="fa-solid fa-gear me-2"></i>Hồ sơ & Ảnh nhà hàng
+        </a>
+    </li>
+</ul>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+        <i class="fa-solid fa-circle-check me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="bg-white rounded-4 shadow-sm p-4 p-lg-5 mb-5" style="max-width:960px">
+    <h5 class="fw-bold mb-4 pb-2 border-bottom">
+        <i class="fa-solid fa-image me-2 text-brand"></i> Quản lý hình ảnh và thông tin quán
+    </h5>
+
+    <form asp-controller="RestaurantOwner" asp-action="Settings" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded-3 small"></div>
+
+        <!-- PHẦN 1: HÌNH ẢNH NHÀ HÀNG (LOGO & ẢNH BÌA) -->
+        <div class="p-4 bg-light rounded-4 border mb-4">
+            <h6 class="fw-bold mb-3 text-dark">
+                <i class="fa-solid fa-camera me-2 text-brand"></i> 1. Hình ảnh thương hiệu (Logo đại diện & Ảnh bìa)
+            </h6>
+
+            <div class="row g-4">
+                <!-- LOGO / AVATAR QUÁN -->
+                <div class="col-md-6 border-end-md">
+                    <label class="form-label fw-semibold small">
+                        <i class="fa-solid fa-circle-user me-1 text-primary"></i> Logo / Ảnh đại diện quán
+                    </label>
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <img id="logoPreview" 
+                             src="@(string.IsNullOrEmpty(Model.LogoUrl) ? "https://ui-avatars.com/api/?name=" + Uri.EscapeDataString(Model.Name ?? "Foodie") + "&background=14402E&color=fff&size=200" : Model.LogoUrl)" 
+                             class="rounded-circle shadow-sm object-fit-cover border border-3 border-white" 
+                             style="width:96px; height:96px" 
+                             alt="Logo xem trước" 
+                             onerror="this.src='https://ui-avatars.com/api/?name=Foodie&background=14402E&color=fff&size=200';" />
+                        <div>
+                            <span class="badge bg-secondary mb-1">Ảnh đại diện</span>
+                            <div class="text-muted small">Hiển thị cạnh tên quán và avatar cửa hàng.</div>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label asp-for="LogoFile" class="form-label small text-muted">Tải ảnh đại diện từ máy tính</label>
+                        <input asp-for="LogoFile" type="file" accept="image/*" class="form-control form-control-sm" id="logoFileInput" />
+                    </div>
+                    <div>
+                        <label asp-for="LogoUrl" class="form-label small text-muted">Hoặc dán URL ảnh trực tuyến</label>
+                        <input asp-for="LogoUrl" class="form-control form-control-sm" placeholder="https://..." id="logoUrlInput" />
+                    </div>
+                </div>
+
+                <!-- COVER IMAGE / ẢNH BÌA -->
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">
+                        <i class="fa-regular fa-image me-1 text-success"></i> Ảnh bìa nhà hàng (Banner)
+                    </label>
+                    <div class="mb-3">
+                        <img id="coverPreview" 
+                             src="@(string.IsNullOrEmpty(Model.CoverImageUrl) ? "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800" : Model.CoverImageUrl)" 
+                             class="rounded-3 shadow-sm object-fit-cover border w-100" 
+                             style="height:120px;" 
+                             alt="Ảnh bìa xem trước" 
+                             onerror="this.src='https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800';" />
+                        <div class="text-muted small mt-1">Ảnh nền banner lớn trên đầu trang chi tiết quán.</div>
+                    </div>
+                    <div class="mb-2">
+                        <label asp-for="CoverFile" class="form-label small text-muted">Tải ảnh bìa từ máy tính</label>
+                        <input asp-for="CoverFile" type="file" accept="image/*" class="form-control form-control-sm" id="coverFileInput" />
+                    </div>
+                    <div>
+                        <label asp-for="CoverImageUrl" class="form-label small text-muted">Hoặc dán URL ảnh bìa</label>
+                        <input asp-for="CoverImageUrl" class="form-control form-control-sm" placeholder="https://..." id="coverUrlInput" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PHẦN 2: THÔNG TIN CHI TIẾT NHÀ HÀNG -->
+        <h6 class="fw-bold mb-3 text-dark">
+            <i class="fa-solid fa-store me-2 text-brand"></i> 2. Thông tin kinh doanh
+        </h6>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label asp-for="Name" class="form-label fw-semibold small"></label>
+                <input asp-for="Name" class="form-control" placeholder="Tên nhà hàng, quán ăn..." />
+                <span asp-validation-for="Name" class="text-danger small"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Phone" class="form-label fw-semibold small"></label>
+                <input asp-for="Phone" class="form-control" placeholder="0901234567" />
+                <span asp-validation-for="Phone" class="text-danger small"></span>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Address" class="form-label fw-semibold small"></label>
+            <input asp-for="Address" class="form-control" placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/TP" />
+            <span asp-validation-for="Address" class="text-danger small"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Description" class="form-label fw-semibold small"></label>
+            <textarea asp-for="Description" class="form-control" rows="3" placeholder="Giới thiệu phong cách ẩm thực, đặc sản, câu chuyện thương hiệu..."></textarea>
+            <span asp-validation-for="Description" class="text-danger small"></span>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <label asp-for="MinOrderAmount" class="form-label fw-semibold small"></label>
+                <div class="input-group">
+                    <input asp-for="MinOrderAmount" class="form-control" />
+                    <span class="input-group-text bg-light">VNĐ</span>
+                </div>
+                <span asp-validation-for="MinOrderAmount" class="text-danger small"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="PrepTimeMinutes" class="form-label fw-semibold small"></label>
+                <div class="input-group">
+                    <input asp-for="PrepTimeMinutes" class="form-control" />
+                    <span class="input-group-text bg-light">Phút</span>
+                </div>
+                <span asp-validation-for="PrepTimeMinutes" class="text-danger small"></span>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-brand px-5 py-2 fw-bold rounded-3 shadow-sm">
+                <i class="fa-solid fa-floppy-disk me-1"></i> Lưu thông tin & Hình ảnh
+            </button>
+            <a asp-controller="RestaurantOwner" asp-action="Menu" class="btn btn-outline-secondary px-4 py-2 fw-semibold rounded-3">
+                Về quản lý thực đơn
+            </a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Preview Logo
+        const logoFileInput = document.getElementById('logoFileInput');
+        const logoUrlInput = document.getElementById('logoUrlInput');
+        const logoPreview = document.getElementById('logoPreview');
+
+        if (logoFileInput) {
+            logoFileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        logoPreview.src = evt.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+        if (logoUrlInput) {
+            logoUrlInput.addEventListener('input', function(e) {
+                if (e.target.value.trim()) {
+                    logoPreview.src = e.target.value.trim();
+                }
+            });
+        }
+
+        // Preview Cover
+        const coverFileInput = document.getElementById('coverFileInput');
+        const coverUrlInput = document.getElementById('coverUrlInput');
+        const coverPreview = document.getElementById('coverPreview');
+
+        if (coverFileInput) {
+            coverFileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        coverPreview.src = evt.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+        if (coverUrlInput) {
+            coverUrlInput.addEventListener('input', function(e) {
+                if (e.target.value.trim()) {
+                    coverPreview.src = e.target.value.trim();
+                }
+            });
+        }
+    </script>
+}

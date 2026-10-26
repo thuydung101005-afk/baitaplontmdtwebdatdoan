@@ -1,32 +1,86 @@
-﻿@{
+@model baitaplontmdtwebdatdoan.Models.RestaurantSettingsViewModel
+@{
     ViewData["Title"] = "Tạo hồ sơ nhà hàng";
 }
 
-<div class="bg-white rounded-4 shadow-sm p-4" style="max-width:500px">
-    <h5 class="fw-bold mb-3">Tạo hồ sơ nhà hàng của bạn</h5>
-    <p class="text-muted small">Bạn cần tạo hồ sơ nhà hàng trước khi có thể nhận đơn và quản lý thực đơn.</p>
+<div class="bg-white rounded-4 shadow-sm p-4 p-md-5 mx-auto" style="max-width:760px">
+    <div class="text-center mb-4 pb-3 border-bottom">
+        <div class="display-6 text-brand mb-2"><i class="fa-solid fa-store"></i></div>
+        <h4 class="fw-bold mb-1">Tạo hồ sơ nhà hàng của bạn</h4>
+        <p class="text-muted small">Cung cấp thông tin và tải ảnh đại diện quán để bắt đầu kinh doanh trên Foodie!</p>
+    </div>
 
-    <form method="post">
-        <div class="mb-3">
-            <label class="form-label small fw-semibold">Tên nhà hàng</label>
-            <input type="text" name="name" class="form-control" required />
+    <form asp-controller="RestaurantOwner" asp-action="CreateRestaurant" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded-3 small"></div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label asp-for="Name" class="form-label small fw-semibold"></label>
+                <input asp-for="Name" class="form-control" placeholder="Ví dụ: Cơm Tấm Sài Gòn 1989" required />
+                <span asp-validation-for="Name" class="text-danger small"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Phone" class="form-label small fw-semibold"></label>
+                <input asp-for="Phone" class="form-control" placeholder="0901234567" required />
+                <span asp-validation-for="Phone" class="text-danger small"></span>
+            </div>
         </div>
+
         <div class="mb-3">
-            <label class="form-label small fw-semibold">Địa chỉ</label>
-            <input type="text" name="address" class="form-control" required />
+            <label asp-for="Address" class="form-label small fw-semibold"></label>
+            <input asp-for="Address" class="form-control" placeholder="Số nhà, đường, phường, quận..." required />
+            <span asp-validation-for="Address" class="text-danger small"></span>
         </div>
+
         <div class="mb-3">
-            <label class="form-label small fw-semibold">Số điện thoại</label>
-            <input type="text" name="phone" class="form-control" required />
+            <label asp-for="Description" class="form-label small fw-semibold"></label>
+            <textarea asp-for="Description" class="form-control" rows="2" placeholder="Giới thiệu đôi nét về ẩm thực của quán..."></textarea>
+            <span asp-validation-for="Description" class="text-danger small"></span>
         </div>
-        <div class="mb-3">
-            <label class="form-label small fw-semibold">Đơn tối thiểu (đ)</label>
-            <input type="number" name="minOrderAmount" class="form-control" value="20000" />
+
+        <!-- HÌNH ẢNH LOGO VÀ BÌA -->
+        <div class="p-3 bg-light rounded-4 border mb-3">
+            <h6 class="fw-bold small mb-3 text-dark"><i class="fa-solid fa-camera me-1 text-brand"></i> Hình ảnh nhà hàng</h6>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold">Logo / Ảnh đại diện quán</label>
+                    <input asp-for="LogoFile" type="file" accept="image/*" class="form-control form-control-sm mb-2" id="createLogoFile" />
+                    <input asp-for="LogoUrl" class="form-control form-control-sm" placeholder="Hoặc dán URL ảnh đại diện" id="createLogoUrl" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold">Ảnh bìa nhà hàng (Cover)</label>
+                    <input asp-for="CoverFile" type="file" accept="image/*" class="form-control form-control-sm mb-2" id="createCoverFile" />
+                    <input asp-for="CoverImageUrl" class="form-control form-control-sm" placeholder="Hoặc dán URL ảnh bìa" id="createCoverUrl" />
+                </div>
+            </div>
         </div>
-        <div class="mb-3">
-            <label class="form-label small fw-semibold">Thời gian chuẩn bị (phút)</label>
-            <input type="number" name="prepTimeMinutes" class="form-control" value="20" />
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <label asp-for="MinOrderAmount" class="form-label small fw-semibold"></label>
+                <div class="input-group">
+                    <input asp-for="MinOrderAmount" class="form-control" />
+                    <span class="input-group-text bg-light">VNĐ</span>
+                </div>
+                <span asp-validation-for="MinOrderAmount" class="text-danger small"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="PrepTimeMinutes" class="form-label small fw-semibold"></label>
+                <div class="input-group">
+                    <input asp-for="PrepTimeMinutes" class="form-control" />
+                    <span class="input-group-text bg-light">Phút</span>
+                </div>
+                <span asp-validation-for="PrepTimeMinutes" class="text-danger small"></span>
+            </div>
         </div>
-        <button type="submit" class="btn btn-brand w-100 fw-bold">Tạo hồ sơ</button>
+
+        <button type="submit" class="btn btn-brand w-100 py-2 fw-bold rounded-3 shadow-sm">
+            <i class="fa-solid fa-check me-1"></i> Tạo hồ sơ nhà hàng
+        </button>
     </form>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

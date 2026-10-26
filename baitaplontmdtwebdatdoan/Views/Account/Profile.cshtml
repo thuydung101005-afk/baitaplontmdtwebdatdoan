@@ -1,0 +1,323 @@
+@model baitaplontmdtwebdatdoan.Models.ProfileViewModel
+@{
+    ViewData["Title"] = "Thông tin tài khoản - Foodie";
+    var activeTab = (string)(ViewBag.ActiveTab ?? "info");
+    var avatarSrc = !string.IsNullOrEmpty(Model.AvatarUrl) 
+        ? Model.AvatarUrl 
+        : $"https://ui-avatars.com/api/?name={Uri.EscapeDataString(Model.FullName)}&background=14402E&color=fff&size=200&bold=true";
+}
+
+<!-- BREADCRUMB -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb small">
+        <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index" class="text-decoration-none text-muted">Trang chủ</a></li>
+        <li class="breadcrumb-item active fw-bold text-brand" aria-current="page">Thông tin tài khoản</li>
+    </ol>
+</nav>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-4 shadow-sm mb-4 border-0 border-start border-4 border-success" role="alert">
+        <i class="fa-solid fa-circle-check me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-4 shadow-sm mb-4 border-0 border-start border-4 border-danger" role="alert">
+        <i class="fa-solid fa-triangle-exclamation me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row g-4 mb-5">
+    <!-- CỘT BÊN TRÁI: THẺ TỔNG QUAN TÀI KHOẢN & TABS -->
+    <div class="col-lg-4">
+        <div class="bg-white rounded-4 shadow-sm p-4 text-center mb-4">
+            <div class="position-relative d-inline-block mb-3">
+                <img src="@avatarSrc" 
+                     id="sideAvatarPreview"
+                     class="rounded-circle shadow object-fit-cover border border-4 border-white" 
+                     style="width:120px; height:120px;" 
+                     alt="@Model.FullName" 
+                     onerror="this.src='https://ui-avatars.com/api/?name=Foodie&background=14402E&color=fff&size=200';" />
+            </div>
+
+            <h5 class="fw-bold mb-1">@Model.FullName</h5>
+            <p class="text-muted small mb-2"><i class="fa-regular fa-envelope me-1"></i>@Model.Email</p>
+
+            <div class="d-flex justify-content-center gap-2 mb-3">
+                <span class="badge bg-brand-subtle text-brand border border-success-subtle px-3 py-1 rounded-pill">
+                    @(Model.Role switch {
+                        "admin" => "Quản trị viên",
+                        "restaurant_owner" => "Chủ nhà hàng",
+                        _ => "Khách hàng thân thiết"
+                    })
+                </span>
+                <span class="badge bg-light text-muted border px-3 py-1 rounded-pill small">
+                    <i class="fa-regular fa-calendar me-1"></i>Từ @Model.CreatedAt.ToString("MM/yyyy")
+                </span>
+            </div>
+        </div>
+
+        <!-- MENU TABS ĐIỀU HƯỚNG -->
+        <div class="list-group rounded-4 shadow-sm overflow-hidden border-0 bg-white">
+            <a href="@Url.Action("Profile", new { tab = "info" })" 
+               class="list-group-item list-group-item-action py-3 px-4 border-0 d-flex align-items-center justify-content-between @(activeTab == "info" ? "active bg-brand text-white fw-bold" : "text-dark fw-semibold")">
+                <span><i class="fa-solid fa-user me-3"></i>Thông tin cá nhân & Ảnh</span>
+                <i class="fa-solid fa-chevron-right small opacity-50"></i>
+            </a>
+            <a href="@Url.Action("Profile", new { tab = "address" })" 
+               class="list-group-item list-group-item-action py-3 px-4 border-0 d-flex align-items-center justify-content-between @(activeTab == "address" ? "active bg-brand text-white fw-bold" : "text-dark fw-semibold")">
+                <span><i class="fa-solid fa-map-location-dot me-3"></i>Sổ địa chỉ nhận hàng</span>
+                <span class="badge bg-light text-dark rounded-pill">@Model.Addresses.Count</span>
+            </a>
+            <a href="@Url.Action("Profile", new { tab = "password" })" 
+               class="list-group-item list-group-item-action py-3 px-4 border-0 d-flex align-items-center justify-content-between @(activeTab == "password" ? "active bg-brand text-white fw-bold" : "text-dark fw-semibold")">
+                <span><i class="fa-solid fa-lock me-3"></i>Đổi mật khẩu</span>
+                <i class="fa-solid fa-chevron-right small opacity-50"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- CỘT BÊN PHẢI: NỘI DUNG TỪNG TAB -->
+    <div class="col-lg-8">
+        @if (activeTab == "info")
+        {
+            <!-- TAB 1: THÔNG TIN CÁ NHÂN -->
+            <div class="bg-white rounded-4 shadow-sm p-4 p-md-5">
+                <h5 class="fw-bold mb-4 pb-2 border-bottom">
+                    <i class="fa-solid fa-id-card me-2 text-brand"></i> Hồ sơ người dùng
+                </h5>
+
+                <form asp-controller="Account" asp-action="UpdateProfile" method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+
+                    <!-- KHỐI ĐỔI ẢNH ĐẠI DIỆN -->
+                    <div class="p-3 bg-light rounded-4 border mb-4">
+                        <label class="form-label fw-semibold small mb-2">
+                            <i class="fa-solid fa-camera me-1 text-brand"></i> Ảnh đại diện tài khoản
+                        </label>
+                        <div class="d-flex flex-wrap align-items-center gap-3">
+                            <img id="editAvatarPreview" 
+                                 src="@avatarSrc" 
+                                 class="rounded-circle shadow-sm object-fit-cover border" 
+                                 style="width:80px; height:80px" 
+                                 alt="Avatar preview" />
+                            <div class="flex-grow-1" style="min-width:240px">
+                                <label asp-for="AvatarFile" class="form-label small text-muted mb-1">Tải ảnh đại diện từ máy tính</label>
+                                <input asp-for="AvatarFile" type="file" accept="image/*" class="form-control form-control-sm mb-2" id="avatarFileInput" />
+                                <input asp-for="AvatarUrl" class="form-control form-control-sm" placeholder="Hoặc dán liên kết URL ảnh đại diện..." id="avatarUrlInput" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="FullName" class="form-label small fw-semibold"></label>
+                            <input asp-for="FullName" class="form-control" required />
+                            <span asp-validation-for="FullName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Phone" class="form-label small fw-semibold"></label>
+                            <input asp-for="Phone" class="form-control" placeholder="0901234567" required />
+                            <span asp-validation-for="Phone" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Email tài khoản</label>
+                            <input type="text" class="form-control bg-light" value="@Model.Email" readonly disabled />
+                            <div class="form-text small">Email dùng để đăng nhập và bảo mật tài khoản.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Vai trò hệ thống</label>
+                            <input type="text" class="form-control bg-light" value="@(Model.Role == "restaurant_owner" ? "Đối tác Nhà hàng" : (Model.Role == "admin" ? "Quản trị viên" : "Khách hàng"))" readonly disabled />
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-brand px-5 py-2 fw-bold rounded-3 shadow-sm">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> Lưu thay đổi hồ sơ
+                    </button>
+                </form>
+            </div>
+        }
+        else if (activeTab == "address")
+        {
+            <!-- TAB 2: SỔ ĐỊA CHỈ -->
+            <div class="bg-white rounded-4 shadow-sm p-4 p-md-5">
+                <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                    <h5 class="fw-bold mb-0">
+                        <i class="fa-solid fa-map-location-dot me-2 text-brand"></i> Sổ địa chỉ giao hàng
+                    </h5>
+                    <button class="btn btn-brand btn-sm fw-semibold rounded-3" type="button" data-bs-toggle="collapse" data-bs-target="#newAddressCollapse">
+                        <i class="fa-solid fa-plus me-1"></i> Thêm địa chỉ mới
+                    </button>
+                </div>
+
+                <!-- FORM THÊM ĐỊA CHỈ (COLLAPSIBLE) -->
+                <div class="collapse mb-4" id="newAddressCollapse">
+                    <div class="p-4 bg-light rounded-4 border">
+                        <h6 class="fw-bold mb-3 text-dark">Thêm địa chỉ giao hàng mới</h6>
+                        <form asp-controller="Account" asp-action="AddAddress" method="post">
+                            @Html.AntiForgeryToken()
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold">Tên người nhận</label>
+                                    <input type="text" name="ReceiverName" class="form-control form-control-sm" value="@Model.FullName" required />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold">Số điện thoại</label>
+                                    <input type="text" name="ReceiverPhone" class="form-control form-control-sm" value="@Model.Phone" required />
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Địa chỉ cụ thể (Số nhà, tên đường)</label>
+                                <input type="text" name="AddressLine" class="form-control form-control-sm" placeholder="VD: 123 Lê Lợi..." required />
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold">Phường / Xã</label>
+                                    <input type="text" name="Ward" class="form-control form-control-sm" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold">Quận / Huyện</label>
+                                    <input type="text" name="District" class="form-control form-control-sm" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold">Tỉnh / Thành phố</label>
+                                    <input type="text" name="City" class="form-control form-control-sm" value="Hà Nội" />
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="form-check">
+                                    <input type="checkbox" name="IsDefault" value="true" class="form-check-input" id="isDefaultCheck" />
+                                    <label class="form-check-label small fw-semibold" for="isDefaultCheck">Đặt làm địa chỉ mặc định</label>
+                                </div>
+                                <button type="submit" class="btn btn-brand btn-sm px-4 fw-bold rounded-3">Lưu địa chỉ</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- DANH SÁCH ĐỊA CHỈ ĐÃ LƯU -->
+                @if (Model.Addresses.Count == 0)
+                {
+                    <div class="text-center py-5 text-muted">
+                        <i class="fa-regular fa-folder-open display-4 mb-3 d-block opacity-50"></i>
+                        <p class="mb-2">Bạn chưa lưu địa chỉ nhận hàng nào.</p>
+                        <button class="btn btn-outline-brand btn-sm rounded-3" type="button" data-bs-toggle="collapse" data-bs-target="#newAddressCollapse">
+                            + Thêm địa chỉ đầu tiên
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex flex-column gap-3">
+                        @foreach (var addr in Model.Addresses)
+                        {
+                            <div class="p-3 rounded-4 border @(addr.IsDefault ? "border-brand bg-success-subtle bg-opacity-10" : "bg-white") d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <strong class="text-dark">@addr.ReceiverName</strong>
+                                        <span class="text-muted small">| @addr.ReceiverPhone</span>
+                                        @if (addr.IsDefault)
+                                        {
+                                            <span class="badge bg-brand rounded-pill small">Mặc định</span>
+                                        }
+                                        <span class="badge bg-light text-muted border small">@(addr.Label ?? "Nhà riêng")</span>
+                                    </div>
+                                    <p class="text-muted small mb-0">
+                                        @addr.AddressLine
+                                        @if (!string.IsNullOrEmpty(addr.Ward)) { <span>, @addr.Ward</span> }
+                                        @if (!string.IsNullOrEmpty(addr.District)) { <span>, @addr.District</span> }
+                                        @if (!string.IsNullOrEmpty(addr.City)) { <span>, @addr.City</span> }
+                                    </p>
+                                </div>
+                                <form asp-controller="Account" asp-action="DeleteAddress" method="post" onsubmit="return confirm('Bạn có chắc muốn xoá địa chỉ này?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@addr.Id" />
+                                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-3" title="Xoá địa chỉ">
+                                        <i class="fa-regular fa-trash-can"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else if (activeTab == "password")
+        {
+            <!-- TAB 3: ĐỔI MẬT KHẨU -->
+            <div class="bg-white rounded-4 shadow-sm p-4 p-md-5" style="max-width:600px">
+                <h5 class="fw-bold mb-4 pb-2 border-bottom">
+                    <i class="fa-solid fa-key me-2 text-brand"></i> Đổi mật khẩu
+                </h5>
+
+                <form asp-controller="Account" asp-action="ChangePassword" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <label asp-for="ChangePassword.CurrentPassword" class="form-label small fw-semibold"></label>
+                        <input asp-for="ChangePassword.CurrentPassword" class="form-control" required />
+                        <span asp-validation-for="ChangePassword.CurrentPassword" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="ChangePassword.NewPassword" class="form-label small fw-semibold"></label>
+                        <input asp-for="ChangePassword.NewPassword" class="form-control" required />
+                        <span asp-validation-for="ChangePassword.NewPassword" class="text-danger small"></span>
+                        <div class="form-text small">Mật khẩu phải có độ dài tối thiểu 6 ký tự.</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="ChangePassword.ConfirmPassword" class="form-label small fw-semibold"></label>
+                        <input asp-for="ChangePassword.ConfirmPassword" class="form-control" required />
+                        <span asp-validation-for="ChangePassword.ConfirmPassword" class="text-danger small"></span>
+                    </div>
+
+                    <button type="submit" class="btn btn-brand px-5 py-2 fw-bold rounded-3 shadow-sm">
+                        <i class="fa-solid fa-lock me-1"></i> Cập nhật mật khẩu mới
+                    </button>
+                </form>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const avatarFileInput = document.getElementById('avatarFileInput');
+        const avatarUrlInput = document.getElementById('avatarUrlInput');
+        const editPreview = document.getElementById('editAvatarPreview');
+        const sidePreview = document.getElementById('sideAvatarPreview');
+
+        if (avatarFileInput) {
+            avatarFileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        if (editPreview) editPreview.src = evt.target.result;
+                        if (sidePreview) sidePreview.src = evt.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        if (avatarUrlInput) {
+            avatarUrlInput.addEventListener('input', function(e) {
+                const val = e.target.value.trim();
+                if (val) {
+                    if (editPreview) editPreview.src = val;
+                    if (sidePreview) sidePreview.src = val;
+                }
+            });
+        }
+    </script>
+}

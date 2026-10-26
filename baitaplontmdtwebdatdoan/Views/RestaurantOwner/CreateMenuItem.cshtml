@@ -55,27 +55,32 @@
         </div>
 
         <!-- IMAGE UPLOAD / URL -->
-        <div class="mb-3 p-3 bg-light rounded-3 border">
-            <label class="form-label fw-semibold small mb-2"><i class="fa-regular fa-image me-1 text-brand"></i> Hình ảnh món ăn</label>
+        <div class="mb-3 p-3 bg-light rounded-4 border">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label fw-semibold small mb-0">
+                    <i class="fa-regular fa-images me-1 text-brand"></i> Hình ảnh món ăn (Cho phép tải nhiều ảnh)
+                </label>
+                <span class="badge bg-brand-subtle text-brand small">Ảnh đầu tiên sẽ là Ảnh chính</span>
+            </div>
             
-            <div class="row g-3 align-items-center">
-                <div class="col-md-7">
-                    <div class="mb-2">
-                        <label asp-for="ImageFile" class="form-label small text-muted">1. Tải ảnh từ máy tính</label>
-                        <input asp-for="ImageFile" type="file" accept="image/*" class="form-control form-control-sm" id="imageFileInput" />
+            <div class="mb-3">
+                <label asp-for="ImageFiles" class="form-label small text-muted">1. Tải ảnh từ máy tính (giữ phím Ctrl / Shift để chọn nhiều ảnh cùng lúc)</label>
+                <input asp-for="ImageFiles" type="file" multiple accept="image/*" class="form-control" id="imageFilesInput" />
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="ImageUrl" class="form-label small text-muted">2. Hoặc dán liên kết URL ảnh Online (nếu nhiều ảnh, cách nhau bằng dấu phẩy)</label>
+                <input asp-for="ImageUrl" class="form-control form-control-sm" placeholder="https://..., https://..." id="imageUrlInput" />
+            </div>
+
+            <!-- MULTI-IMAGE PREVIEW GRID -->
+            <div>
+                <div class="small fw-semibold text-muted mb-2">Danh sách ảnh xem trước:</div>
+                <div id="multiImagePreviewContainer" class="d-flex flex-wrap gap-2">
+                    <div class="position-relative border rounded-3 p-1 bg-white shadow-sm" style="width:110px">
+                        <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300" class="rounded-2 object-fit-cover w-100" style="height:90px" alt="Xem trước mặc định" />
+                        <span class="badge bg-secondary position-absolute top-0 start-0 m-1 small" style="font-size:10px">Mẫu</span>
                     </div>
-                    <div>
-                        <label asp-for="ImageUrl" class="form-label small text-muted">2. Hoặc dán liên kết URL ảnh Online</label>
-                        <input asp-for="ImageUrl" class="form-control form-control-sm" placeholder="https://..." id="imageUrlInput" />
-                    </div>
-                </div>
-                <div class="col-md-5 text-center">
-                    <div class="small text-muted mb-1">Xem trước ảnh:</div>
-                    <img id="imagePreview" 
-                         src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300" 
-                         class="rounded-3 shadow-sm object-fit-cover border" 
-                         style="width:120px; height:120px" 
-                         alt="Xem trước" />
                 </div>
             </div>
         </div>
@@ -108,24 +113,59 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        const imageFileInput = document.getElementById('imageFileInput');
+        const imageFilesInput = document.getElementById('imageFilesInput');
         const imageUrlInput = document.getElementById('imageUrlInput');
-        const imagePreview = document.getElementById('imagePreview');
+        const container = document.getElementById('multiImagePreviewContainer');
 
-        imageFileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(evt) {
-                    imagePreview.src = evt.target.result;
-                };
-                reader.readAsDataURL(file);
+        function renderPreviews(sources) {
+            if (!sources || sources.length === 0) return;
+            container.innerHTML = '';
+            sources.forEach((src, idx) => {
+                const card = document.createElement('div');
+                card.className = 'position-relative border rounded-3 p-1 bg-white shadow-sm';
+                card.style.width = '110px';
+                
+                const badgeText = idx === 0 ? 'Ảnh chính' : `#${idx + 1}`;
+                const badgeClass = idx === 0 ? 'bg-brand' : 'bg-dark';
+
+                card.innerHTML = `
+                    <img src="${src}" class="rounded-2 object-fit-cover w-100" style="height:90px" alt="Preview ${idx + 1}" onerror="this.src='https://placehold.co/150x100?text=Error';" />
+                    <span class="badge ${badgeClass} position-absolute top-0 start-0 m-1" style="font-size:10px">${badgeText}</span>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        imageFilesInput.addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            if (files.length > 0) {
+                container.innerHTML = '';
+                files.forEach((file, idx) => {
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        const card = document.createElement('div');
+                        card.className = 'position-relative border rounded-3 p-1 bg-white shadow-sm';
+                        card.style.width = '110px';
+                        const badgeText = idx === 0 ? 'Ảnh chính' : `#${idx + 1}`;
+                        const badgeClass = idx === 0 ? 'bg-brand' : 'bg-dark';
+                        card.innerHTML = `
+                            <img src="${evt.target.result}" class="rounded-2 object-fit-cover w-100" style="height:90px" alt="Ảnh ${idx + 1}" />
+                            <span class="badge ${badgeClass} position-absolute top-0 start-0 m-1" style="font-size:10px">${badgeText}</span>
+                        `;
+                        container.appendChild(card);
+                    };
+                    reader.readAsDataURL(file);
+                });
             }
         });
 
         imageUrlInput.addEventListener('input', function(e) {
-            if (e.target.value) {
-                imagePreview.src = e.target.value;
+            const val = e.target.value.trim();
+            if (val) {
+                const urls = val.split(/[,;\n]/).map(u => u.trim()).filter(u => u.length > 0);
+                if (urls.length > 0 && (!imageFilesInput.files || imageFilesInput.files.length === 0)) {
+                    renderPreviews(urls);
+                }
             }
         });
     </script>

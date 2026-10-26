@@ -43,22 +43,63 @@ namespace baitaplontmdtwebdatdoan.Controllers
             var existing = await _context.Restaurants.FirstOrDefaultAsync(r => r.OwnerId == CurrentUserId);
             if (existing != null) return RedirectToAction("Orders");
 
-            return View();
+            return View(new RestaurantSettingsViewModel());
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateRestaurant(string name, string address, string phone, decimal minOrderAmount, int prepTimeMinutes)
+        public async Task<IActionResult> CreateRestaurant(RestaurantSettingsViewModel model)
         {
+            var existing = await _context.Restaurants.FirstOrDefaultAsync(r => r.OwnerId == CurrentUserId);
+            if (existing != null) return RedirectToAction("Orders");
+
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            string uploadFolder = Path.Combine(_env.WebRootPath, "images", "restaurants");
+            if (!Directory.Exists(uploadFolder))
+            {
+                Directory.CreateDirectory(uploadFolder);
+            }
+
+            string? logoUrl = model.LogoUrl;
+            if (model.LogoFile != null && model.LogoFile.Length > 0)
+            {
+                string uniqueFileName = $"logo_{Guid.NewGuid()}_{Path.GetFileName(model.LogoFile.FileName)}";
+                string filePath = Path.Combine(uploadFolder, uniqueFileName);
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await model.LogoFile.CopyToAsync(fileStream);
+                }
+                logoUrl = $"/images/restaurants/{uniqueFileName}";
+            }
+
+            string? coverUrl = model.CoverImageUrl;
+            if (model.CoverFile != null && model.CoverFile.Length > 0)
+            {
+                string uniqueFileName = $"cover_{Guid.NewGuid()}_{Path.GetFileName(model.CoverFile.FileName)}";
+                string filePath = Path.Combine(uploadFolder, uniqueFileName);
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await model.CoverFile.CopyToAsync(fileStream);
+                }
+                coverUrl = $"/images/restaurants/{uniqueFileName}";
+            }
+
             var restaurant = new Restaurant
             {
                 OwnerId = CurrentUserId,
-                Name = name,
-                Address = address,
-                Phone = phone,
+                Name = model.Name.Trim(),
+                Description = model.Description?.Trim(),
+                Address = model.Address.Trim(),
+                Phone = model.Phone.Trim(),
+                LogoUrl = logoUrl,
+                CoverImageUrl = coverUrl,
                 Status = "pending_approval",
-                MinOrderAmount = minOrderAmount,
-                PrepTimeMinutes = prepTimeMinutes,
+                MinOrderAmount = model.MinOrderAmount,
+                PrepTimeMinutes = model.PrepTimeMinutes,
                 AvgRating = 0,
                 TotalReviews = 0,
                 CreatedAt = DateTime.UtcNow,
@@ -67,8 +108,104 @@ namespace baitaplontmdtwebdatdoan.Controllers
             _context.Restaurants.Add(restaurant);
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = "Đã tạo hồ sơ nhà hàng! Đang chờ quản trị viên phê duyệt.";
-            return RedirectToAction("Orders");
+            TempData["SuccessMessage"] = "Đã tạo hồ sơ nhà hàng thành công! Đang chờ quản trị viên phê duyệt.";
+            return RedirectToAction("Settings");
+        }
+
+        // GET /RestaurantOwner/Settings - Cài đặt hồ sơ & ảnh đại diện, ảnh bìa nhà hàng
+        public async Task<IActionResult> Settings()
+        {
+            var restaurant = await _context.Restaurants.FirstOrDefaultAsync(r => r.OwnerId == CurrentUserId);
+            if (restaurant == null) return RedirectToAction("CreateRestaurant");
+
+            ViewBag.Restaurant = restaurant;
+            ViewBag.RestaurantName = restaurant.Name;
+            ViewBag.RestaurantStatus = restaurant.Status;
+
+            var vm = new RestaurantSettingsViewModel
+            {
+                Id = restaurant.Id,
+                Name = restaurant.Name,
+                Description = restaurant.Description,
+                Address = restaurant.Address ?? string.Empty,
+                Phone = restaurant.Phone ?? string.Empty,
+                MinOrderAmount = restaurant.MinOrderAmount,
+                PrepTimeMinutes = restaurant.PrepTimeMinutes,
+                LogoUrl = restaurant.LogoUrl,
+                CoverImageUrl = restaurant.CoverImageUrl,
+                Status = restaurant.Status,
+                AvgRating = restaurant.AvgRating,
+                TotalReviews = restaurant.TotalReviews
+            };
+
+            return View(vm);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Settings(RestaurantSettingsViewModel model)
+        {
+            var restaurant = await _context.Restaurants.FirstOrDefaultAsync(r => r.OwnerId == CurrentUserId);
+            if (restaurant == null) return RedirectToAction("CreateRestaurant");
+
+            if (!ModelState.IsValid)
+            {
+                ViewBag.Restaurant = restaurant;
+                ViewBag.RestaurantName = restaurant.Name;
+                ViewBag.RestaurantStatus = restaurant.Status;
+                return View(model);
+            }
+
+            string uploadFolder = Path.Combine(_env.WebRootPath, "images", "restaurants");
+            if (!Directory.Exists(uploadFolder))
+            {
+                Directory.CreateDirectory(uploadFolder);
+            }
+
+            // Tải logo / ảnh đại diện quán
+            if (model.LogoFile != null && model.LogoFile.Length > 0)
+            {
+                string uniqueFileName = $"logo_{Guid.NewGuid()}_{Path.GetFileName(model.LogoFile.FileName)}";
+                string filePath = Path.Combine(uploadFolder, uniqueFileName);
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await model.LogoFile.CopyToAsync(fileStream);
+                }
+                restaurant.LogoUrl = $"/images/restaurants/{uniqueFileName}";
+            }
+            else if (!string.IsNullOrWhiteSpace(model.LogoUrl))
+            {
+                restaurant.LogoUrl = model.LogoUrl.Trim();
+            }
+
+            // Tải ảnh bìa cover
+            if (model.CoverFile != null && model.CoverFile.Length > 0)
+            {
+                string uniqueFileName = $"cover_{Guid.NewGuid()}_{Path.GetFileName(model.CoverFile.FileName)}";
+                string filePath = Path.Combine(uploadFolder, uniqueFileName);
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await model.CoverFile.CopyToAsync(fileStream);
+                }
+                restaurant.CoverImageUrl = $"/images/restaurants/{uniqueFileName}";
+            }
+            else if (!string.IsNullOrWhiteSpace(model.CoverImageUrl))
+            {
+                restaurant.CoverImageUrl = model.CoverImageUrl.Trim();
+            }
+
+            restaurant.Name = model.Name.Trim();
+            restaurant.Description = model.Description?.Trim();
+            restaurant.Address = model.Address.Trim();
+            restaurant.Phone = model.Phone.Trim();
+            restaurant.MinOrderAmount = model.MinOrderAmount;
+            restaurant.PrepTimeMinutes = model.PrepTimeMinutes;
+            restaurant.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Cập nhật hồ sơ và ảnh nhà hàng thành công!";
+            return RedirectToAction("Settings");
         }
 
         // GET /RestaurantOwner/Orders - Đơn hàng của quán
@@ -239,24 +376,49 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 targetCategoryId = cat.Id;
             }
 
-            // Xử lý ảnh tải lên
-            string? finalImageUrl = model.ImageUrl;
+            // Xử lý ảnh tải lên (hỗ trợ nhiều ảnh)
+            var uploadedUrls = new List<string>();
+            string uploadFolder = Path.Combine(_env.WebRootPath, "images", "products");
+            if (!Directory.Exists(uploadFolder))
+            {
+                Directory.CreateDirectory(uploadFolder);
+            }
+
+            if (model.ImageFiles != null && model.ImageFiles.Count > 0)
+            {
+                foreach (var file in model.ImageFiles)
+                {
+                    if (file.Length > 0)
+                    {
+                        string uniqueFileName = $"{Guid.NewGuid()}_{Path.GetFileName(file.FileName)}";
+                        string filePath = Path.Combine(uploadFolder, uniqueFileName);
+                        using (var fileStream = new FileStream(filePath, FileMode.Create))
+                        {
+                            await file.CopyToAsync(fileStream);
+                        }
+                        uploadedUrls.Add($"/images/products/{uniqueFileName}");
+                    }
+                }
+            }
+
             if (model.ImageFile != null && model.ImageFile.Length > 0)
             {
-                string uploadFolder = Path.Combine(_env.WebRootPath, "images", "products");
-                if (!Directory.Exists(uploadFolder))
-                {
-                    Directory.CreateDirectory(uploadFolder);
-                }
-
                 string uniqueFileName = $"{Guid.NewGuid()}_{Path.GetFileName(model.ImageFile.FileName)}";
                 string filePath = Path.Combine(uploadFolder, uniqueFileName);
                 using (var fileStream = new FileStream(filePath, FileMode.Create))
                 {
                     await model.ImageFile.CopyToAsync(fileStream);
                 }
-                finalImageUrl = $"/images/products/{uniqueFileName}";
+                uploadedUrls.Add($"/images/products/{uniqueFileName}");
             }
+
+            if (!string.IsNullOrWhiteSpace(model.ImageUrl))
+            {
+                var manualUrls = model.ImageUrl.Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                uploadedUrls.AddRange(manualUrls);
+            }
+
+            string? finalImageUrl = uploadedUrls.Count > 0 ? string.Join(",", uploadedUrls.Distinct()) : null;
 
             var menuItem = new MenuItem
             {
@@ -353,27 +515,46 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 targetCategoryId = cat.Id;
             }
 
-            // Xử lý upload ảnh mới
+            // Xử lý upload ảnh mới (hỗ trợ nhiều ảnh)
+            var currentUrls = !string.IsNullOrWhiteSpace(model.ImageUrl)
+                ? model.ImageUrl.Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
+                : new List<string>();
+
+            string editUploadFolder = Path.Combine(_env.WebRootPath, "images", "products");
+            if (!Directory.Exists(editUploadFolder))
+            {
+                Directory.CreateDirectory(editUploadFolder);
+            }
+
+            if (model.ImageFiles != null && model.ImageFiles.Count > 0)
+            {
+                foreach (var file in model.ImageFiles)
+                {
+                    if (file.Length > 0)
+                    {
+                        string uniqueFileName = $"{Guid.NewGuid()}_{Path.GetFileName(file.FileName)}";
+                        string filePath = Path.Combine(editUploadFolder, uniqueFileName);
+                        using (var fileStream = new FileStream(filePath, FileMode.Create))
+                        {
+                            await file.CopyToAsync(fileStream);
+                        }
+                        currentUrls.Add($"/images/products/{uniqueFileName}");
+                    }
+                }
+            }
+
             if (model.ImageFile != null && model.ImageFile.Length > 0)
             {
-                string uploadFolder = Path.Combine(_env.WebRootPath, "images", "products");
-                if (!Directory.Exists(uploadFolder))
-                {
-                    Directory.CreateDirectory(uploadFolder);
-                }
-
                 string uniqueFileName = $"{Guid.NewGuid()}_{Path.GetFileName(model.ImageFile.FileName)}";
-                string filePath = Path.Combine(uploadFolder, uniqueFileName);
+                string filePath = Path.Combine(editUploadFolder, uniqueFileName);
                 using (var fileStream = new FileStream(filePath, FileMode.Create))
                 {
                     await model.ImageFile.CopyToAsync(fileStream);
                 }
-                item.ImageUrl = $"/images/products/{uniqueFileName}";
+                currentUrls.Add($"/images/products/{uniqueFileName}");
             }
-            else if (!string.IsNullOrWhiteSpace(model.ImageUrl))
-            {
-                item.ImageUrl = model.ImageUrl.Trim();
-            }
+
+            item.ImageUrl = currentUrls.Count > 0 ? string.Join(",", currentUrls.Distinct()) : null;
 
             item.Name = model.Name.Trim();
             item.Description = model.Description?.Trim();

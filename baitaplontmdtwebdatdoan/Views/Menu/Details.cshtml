@@ -2,7 +2,8 @@
 @{
     var item = Model.Item;
     ViewData["Title"] = item.Name + " - Chi tiết món ăn";
-    var imgUrl = string.IsNullOrEmpty(item.ImageUrl) ? "https://placehold.co/600x450?text=Foodie" : item.ImageUrl;
+    var images = item.Images.Count > 0 ? item.Images : new List<string> { item.PrimaryImageUrl };
+    var mainImg = images.First();
 }
 
 <!-- BREADCRUMB -->
@@ -26,8 +27,9 @@
         <!-- CỘT ẢNH MÓN ĂN -->
         <div class="col-lg-6">
             <div class="position-relative rounded-4 overflow-hidden shadow-sm mb-3" style="max-height:450px; background:#f8f9fa;">
-                <img src="@imgUrl" class="w-100 h-100 object-fit-cover product-img" alt="@item.Name" 
-                     style="min-height:360px; max-height:450px;"
+                <img src="@mainImg" class="w-100 h-100 object-fit-cover product-img" alt="@item.Name" 
+                     id="mainProductImg"
+                     style="min-height:360px; max-height:450px; transition: opacity .2s ease;"
                      onerror="this.src='https://placehold.co/600x450?text=Foodie';" />
                 
                 <div class="position-absolute top-0 start-0 p-3 d-flex flex-column gap-2">
@@ -51,6 +53,23 @@
                     }
                 </div>
             </div>
+
+            <!-- THUMBNAIL GALLERY DÀNH CHO NHIỀU ẢNH -->
+            @if (images.Count > 1)
+            {
+                <div class="d-flex gap-2 overflow-auto pb-2 mb-3">
+                    @for (int idx = 0; idx < images.Count; idx++)
+                    {
+                        var thumbUrl = images[idx];
+                        <button type="button" class="btn p-0 border rounded-3 overflow-hidden thumb-gallery-btn @(idx == 0 ? "border-brand border-2 shadow-sm" : "opacity-75")" 
+                                style="width:72px; height:72px; flex-shrink:0"
+                                onclick="switchProductThumb(this, '@thumbUrl')"
+                                aria-label="Xem ảnh @(idx + 1)">
+                            <img src="@thumbUrl" class="w-100 h-100 object-fit-cover" alt="@item.Name ảnh @(idx + 1)" onerror="this.src='https://placehold.co/150x150?text=Foodie';" />
+                        </button>
+                    }
+                </div>
+            }
 
             <!-- TIÊU CHUẨN DỊCH VỤ -->
             <div class="row g-2 text-center text-muted small mt-2">
@@ -207,4 +226,25 @@
             }
         </div>
     </div>
+}
+
+@section Scripts {
+    <script>
+        function switchProductThumb(btn, src) {
+            const mainImg = document.getElementById('mainProductImg');
+            if (mainImg) {
+                mainImg.style.opacity = '0.4';
+                setTimeout(() => {
+                    mainImg.src = src;
+                    mainImg.style.opacity = '1';
+                }, 150);
+            }
+            document.querySelectorAll('.thumb-gallery-btn').forEach(b => {
+                b.classList.remove('border-brand', 'border-2', 'shadow-sm');
+                b.classList.add('opacity-75');
+            });
+            btn.classList.add('border-brand', 'border-2', 'shadow-sm');
+            btn.classList.remove('opacity-75');
+        }
+    </script>
 }

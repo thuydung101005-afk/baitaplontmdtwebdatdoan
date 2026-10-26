@@ -71,7 +71,13 @@
                                 <span class="fd-user-name d-block">@displayName</span>
                             </span>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm rounded-3">
+                            <li>
+                                <a class="dropdown-item fw-semibold" asp-controller="Account" asp-action="Profile">
+                                    <i class="fa-regular fa-user me-2 text-brand"></i>Thông tin tài khoản
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider" /></li>
                             @if (User.IsInRole("admin"))
                             {
                                 <li>
@@ -101,6 +107,11 @@
                                 <li>
                                     <a class="dropdown-item" asp-controller="Chat" asp-action="ShopInbox">
                                         <i class="fa-regular fa-comments me-2 text-primary"></i>Tin nhắn khách hàng
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" asp-controller="RestaurantOwner" asp-action="Settings">
+                                        <i class="fa-solid fa-gear me-2 text-secondary"></i>Hồ sơ & ảnh nhà hàng
                                     </a>
                                 </li>
                                 <li><hr class="dropdown-divider" /></li>

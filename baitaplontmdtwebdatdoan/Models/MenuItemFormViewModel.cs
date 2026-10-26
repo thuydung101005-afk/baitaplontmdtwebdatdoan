@@ -26,11 +26,14 @@ namespace baitaplontmdtwebdatdoan.Models
         [Display(Name = "Hoặc tạo danh mục mới")]
         public string? NewCategoryName { get; set; }
 
-        [Display(Name = "Đường dẫn ảnh (URL)")]
+        [Display(Name = "Đường dẫn ảnh (URL, có thể nhập nhiều URL cách nhau bằng dấu phẩy)")]
         public string? ImageUrl { get; set; }
 
-        [Display(Name = "Hoặc tải tệp ảnh từ máy")]
+        [Display(Name = "Tải một ảnh từ máy")]
         public IFormFile? ImageFile { get; set; }
+
+        [Display(Name = "Tải nhiều ảnh từ máy")]
+        public List<IFormFile>? ImageFiles { get; set; }
 
         [Display(Name = "Đang bán")]
         public bool IsAvailable { get; set; } = true;

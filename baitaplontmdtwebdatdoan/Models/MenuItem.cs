@@ -1,5 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
 
 namespace baitaplontmdtwebdatdoan.Models;
 
@@ -16,6 +18,14 @@ public partial class MenuItem
     public string? Description { get; set; }
 
     public string? ImageUrl { get; set; }
+
+    [NotMapped]
+    public List<string> Images => string.IsNullOrWhiteSpace(ImageUrl)
+        ? new List<string>()
+        : ImageUrl.Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+    [NotMapped]
+    public string PrimaryImageUrl => Images.FirstOrDefault() ?? "https://placehold.co/600x450?text=Foodie";
 
     public decimal BasePrice { get; set; }
 
