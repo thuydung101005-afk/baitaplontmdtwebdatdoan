@@ -26,6 +26,11 @@
     <!-- ===== HEADER ===== -->
     <header class="fd-header">
         <div class="fd-header-inner">
+            <!-- Nút Hamburger chuẩn trên màn hình điện thoại / tablet (mở Offcanvas Drawer bên trái) -->
+            <button class="fd-hamburger d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#fdMobileDrawer" aria-controls="fdMobileDrawer" aria-label="Mở menu">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+
             <a class="fd-brand" href="/" aria-label="Foodie - về trang chủ">
                 <span class="fd-brand-mark"><i class="fa-solid fa-utensils"></i></span>
                 <span class="fd-brand-text">
@@ -85,6 +90,21 @@
                                         <i class="fa-solid fa-shield-halved me-2"></i>Quản trị hệ thống
                                     </a>
                                 </li>
+                                <li>
+                                    <a class="dropdown-item" asp-controller="Admin" asp-action="Revenue">
+                                        <i class="fa-solid fa-sack-dollar me-2 text-success"></i>Doanh thu Sàn & Escrow
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" asp-controller="Voucher" asp-action="Manage">
+                                        <i class="fa-solid fa-ticket me-2 text-warning"></i>Quản lý Voucher
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" asp-controller="Support" asp-action="AdminInbox">
+                                        <i class="fa-solid fa-headset me-2 text-danger"></i>CSKH Người thật & AI
+                                    </a>
+                                </li>
                                 <li><hr class="dropdown-divider" /></li>
                             }
                             @if (User.IsInRole("restaurant_owner"))
@@ -102,6 +122,11 @@
                                 <li>
                                     <a class="dropdown-item" asp-controller="RestaurantOwner" asp-action="Revenue">
                                         <i class="fa-solid fa-chart-line me-2 text-success"></i>Doanh thu và hoa hồng
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" asp-controller="Voucher" asp-action="Manage">
+                                        <i class="fa-solid fa-ticket me-2 text-warning"></i>Voucher khuyến mãi quán
                                     </a>
                                 </li>
                                 <li>
@@ -135,28 +160,70 @@
         </div>
     </header>
 
-    <!-- ===== BODY ===== -->
-    <div class="fd-shell">
-        <!-- Thanh điều hướng -->
-        <aside class="fd-rail">
-            <nav class="fd-rail-nav" aria-label="Điều hướng chính">
-                <a class="fd-navlink @(currentController == "Home" ? "active" : "")" aria-current="@(currentController == "Home" ? "page" : null)" asp-controller="Home" asp-action="Index"><i class="fa-solid fa-house"></i>Trang chủ</a>
-                <a class="fd-navlink @(currentController == "Menu" ? "active" : "")" aria-current="@(currentController == "Menu" ? "page" : null)" asp-controller="Menu" asp-action="Index"><i class="fa-solid fa-border-all"></i>Danh mục món ăn</a>
-                <a class="fd-navlink @(currentController == "Restaurant" ? "active" : "")" aria-current="@(currentController == "Restaurant" ? "page" : null)" asp-controller="Restaurant" asp-action="Index"><i class="fa-solid fa-store"></i>Nhà hàng</a>
-                <a class="fd-navlink @(currentController == "Voucher" ? "active" : "")" aria-current="@(currentController == "Voucher" ? "page" : null)" asp-controller="Voucher" asp-action="Index"><i class="fa-solid fa-tags"></i>Khuyến mãi</a>
-                <a class="fd-navlink @(currentController == "Favorite" ? "active" : "")" aria-current="@(currentController == "Favorite" ? "page" : null)" asp-controller="Favorite" asp-action="Index">
-                    <i class="fa-solid fa-heart"></i>Yêu thích
-                    <span id="favCountBadge" class="badge bg-brand rounded-pill" style="display:none;font-size:11px">0</span>
+    <!-- ===== MENU TRƯỢT BÊN TRÁI TRÊN ĐIỆN THOẠI (OFFCANVAS DRAWER CHUẨN WEB HIỆN ĐẠI) ===== -->
+    <div class="offcanvas offcanvas-start fd-offcanvas d-lg-none" tabindex="-1" id="fdMobileDrawer" aria-labelledby="fdMobileDrawerLabel">
+        <div class="offcanvas-header border-bottom py-3 px-3">
+            <a class="fd-brand" href="/" id="fdMobileDrawerLabel">
+                <span class="fd-brand-mark"><i class="fa-solid fa-utensils"></i></span>
+                <span class="fd-brand-text">
+                    <span class="fd-brand-name">Foodie</span>
+                    <span class="fd-brand-tag d-block">Ngon mỗi ngày!</span>
+                </span>
+            </a>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Đóng"></button>
+        </div>
+        <div class="offcanvas-body p-3 d-flex flex-column justify-content-between">
+            <nav class="d-flex flex-column gap-1" aria-label="Điều hướng di động">
+                <a class="fd-navlink @(currentController == "Home" ? "active" : "")" asp-controller="Home" asp-action="Index"><i class="fa-solid fa-house"></i><span>Trang chủ</span></a>
+                <a class="fd-navlink @(currentController == "Menu" ? "active" : "")" asp-controller="Menu" asp-action="Index"><i class="fa-solid fa-border-all"></i><span>Danh mục món ăn</span></a>
+                <a class="fd-navlink @(currentController == "Restaurant" ? "active" : "")" asp-controller="Restaurant" asp-action="Index"><i class="fa-solid fa-store"></i><span>Nhà hàng</span></a>
+                <a class="fd-navlink @(currentController == "Voucher" ? "active" : "")" asp-controller="Voucher" asp-action="Index"><i class="fa-solid fa-tags"></i><span>Khuyến mãi</span></a>
+                <a class="fd-navlink @(currentController == "Favorite" ? "active" : "")" asp-controller="Favorite" asp-action="Index">
+                    <i class="fa-solid fa-heart"></i><span>Yêu thích</span>
                 </a>
-                <a class="fd-navlink @(currentController == "Follow" ? "active" : "")" aria-current="@(currentController == "Follow" ? "page" : null)" asp-controller="Follow" asp-action="MyFollows"><i class="fa-solid fa-bell"></i>Đang theo dõi</a>
-                <a class="fd-navlink @(currentController == "Order" ? "active" : "")" aria-current="@(currentController == "Order" ? "page" : null)" asp-controller="Order" asp-action="MyOrders"><i class="fa-regular fa-clipboard"></i>Đơn hàng của tôi</a>
+                <a class="fd-navlink @(currentController == "Follow" ? "active" : "")" asp-controller="Follow" asp-action="MyFollows"><i class="fa-solid fa-bell"></i><span>Đang theo dõi</span></a>
+                <a class="fd-navlink @(currentController == "Order" ? "active" : "")" asp-controller="Order" asp-action="MyOrders"><i class="fa-regular fa-clipboard"></i><span>Đơn hàng của tôi</span></a>
+                <a class="fd-navlink @(currentController == "Support" ? "active" : "")" asp-controller="Support" asp-action="Index"><i class="fa-solid fa-headset"></i><span>Chăm sóc khách hàng</span></a>
             </nav>
 
-            <div class="fd-support">
-                <div class="fd-support-title">Hỗ trợ khách hàng</div>
+            <div class="fd-support mt-3">
+                <div class="fd-support-title">Hỗ trợ khách hàng 24/7</div>
                 <div class="fd-support-row"><i class="fa-solid fa-phone"></i>1900 1234</div>
                 <div class="fd-support-row"><i class="fa-regular fa-envelope"></i>hotro@foodie.vn</div>
                 <div class="fd-support-row"><i class="fa-regular fa-clock"></i>8:00 - 22:00 (T2 - CN)</div>
+                <a asp-controller="Support" asp-action="Index" class="btn btn-sm btn-brand w-100 rounded-pill fw-bold mt-2 text-white text-decoration-none">
+                    <i class="fa-solid fa-robot me-1"></i> Chat AI & Người thật
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== BODY ===== -->
+    <div class="fd-shell">
+        <!-- Thanh điều hướng bên trái trên Máy tính (ẩn trên điện thoại vì đã có Offcanvas Drawer) -->
+        <aside class="fd-rail d-none d-lg-block">
+            <nav class="fd-rail-nav" aria-label="Điều hướng chính">
+                <a class="fd-navlink @(currentController == "Home" ? "active" : "")" aria-current="@(currentController == "Home" ? "page" : null)" asp-controller="Home" asp-action="Index"><i class="fa-solid fa-house"></i><span>Trang chủ</span></a>
+                <a class="fd-navlink @(currentController == "Menu" ? "active" : "")" aria-current="@(currentController == "Menu" ? "page" : null)" asp-controller="Menu" asp-action="Index"><i class="fa-solid fa-border-all"></i><span>Danh mục món ăn</span></a>
+                <a class="fd-navlink @(currentController == "Restaurant" ? "active" : "")" aria-current="@(currentController == "Restaurant" ? "page" : null)" asp-controller="Restaurant" asp-action="Index"><i class="fa-solid fa-store"></i><span>Nhà hàng</span></a>
+                <a class="fd-navlink @(currentController == "Voucher" ? "active" : "")" aria-current="@(currentController == "Voucher" ? "page" : null)" asp-controller="Voucher" asp-action="Index"><i class="fa-solid fa-tags"></i><span>Khuyến mãi</span></a>
+                <a class="fd-navlink @(currentController == "Favorite" ? "active" : "")" aria-current="@(currentController == "Favorite" ? "page" : null)" asp-controller="Favorite" asp-action="Index">
+                    <i class="fa-solid fa-heart"></i><span>Yêu thích</span>
+                    <span id="favCountBadge" class="badge bg-brand rounded-pill" style="display:none;font-size:11px">0</span>
+                </a>
+                <a class="fd-navlink @(currentController == "Follow" ? "active" : "")" aria-current="@(currentController == "Follow" ? "page" : null)" asp-controller="Follow" asp-action="MyFollows"><i class="fa-solid fa-bell"></i><span>Đang theo dõi</span></a>
+                <a class="fd-navlink @(currentController == "Order" ? "active" : "")" aria-current="@(currentController == "Order" ? "page" : null)" asp-controller="Order" asp-action="MyOrders"><i class="fa-regular fa-clipboard"></i><span>Đơn hàng của tôi</span></a>
+                <a class="fd-navlink @(currentController == "Support" ? "active" : "")" aria-current="@(currentController == "Support" ? "page" : null)" asp-controller="Support" asp-action="Index"><i class="fa-solid fa-headset"></i><span>Chăm sóc khách hàng</span></a>
+            </nav>
+
+            <div class="fd-support">
+                <div class="fd-support-title">Hỗ trợ khách hàng 24/7</div>
+                <div class="fd-support-row"><i class="fa-solid fa-phone"></i>1900 1234</div>
+                <div class="fd-support-row"><i class="fa-regular fa-envelope"></i>hotro@foodie.vn</div>
+                <div class="fd-support-row"><i class="fa-regular fa-clock"></i>8:00 - 22:00 (T2 - CN)</div>
+                <a asp-controller="Support" asp-action="Index" class="btn btn-sm btn-brand w-100 rounded-pill fw-bold mt-2 text-white text-decoration-none">
+                    <i class="fa-solid fa-robot me-1"></i> Chat AI & Người thật
+                </a>
             </div>
         </aside>
 

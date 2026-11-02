@@ -26,29 +26,34 @@
 </div>
 
 <!-- TABS NAVIGATION -->
-<ul class="nav nav-pills mb-4 bg-white p-2 rounded-4 shadow-sm" style="width:fit-content">
+<ul class="nav nav-pills fd-owner-tabs mb-4 bg-white p-2 rounded-4 shadow-sm">
     <li class="nav-item">
-        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Orders">
+        <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="RestaurantOwner" asp-action="Orders">
             <i class="fa-solid fa-receipt me-2"></i>Đơn hàng
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link active bg-brand text-white fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Menu">
+        <a class="nav-link active bg-brand text-white fw-semibold px-3 py-2 rounded-3" asp-controller="RestaurantOwner" asp-action="Menu">
             <i class="fa-solid fa-utensils me-2"></i>Thực đơn món ăn
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Revenue">
+        <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="RestaurantOwner" asp-action="Revenue">
             <i class="fa-solid fa-chart-line me-2 text-success"></i>Doanh thu & Tài chính
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="Chat" asp-action="ShopInbox">
+        <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="Voucher" asp-action="Manage">
+            <i class="fa-solid fa-ticket me-2 text-warning"></i>Voucher quán
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="Chat" asp-action="ShopInbox">
             <i class="fa-regular fa-comments me-2 text-primary"></i>Tin nhắn khách
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Settings">
+        <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="RestaurantOwner" asp-action="Settings">
             <i class="fa-solid fa-gear me-2"></i>Hồ sơ & Ảnh nhà hàng
         </a>
     </li>
@@ -142,9 +147,12 @@
                 <tbody>
                     @foreach (var item in Model)
                     {
+                        var firstImgUrl = !string.IsNullOrWhiteSpace(item.ImageUrl)
+                            ? item.ImageUrl.Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)[0].Trim()
+                            : "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150";
                         <tr>
                             <td>
-                                <img src="@(string.IsNullOrEmpty(item.ImageUrl) ? "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150" : item.ImageUrl)" 
+                                <img src="@firstImgUrl" 
                                      class="rounded-3 object-fit-cover shadow-sm" 
                                      style="width:60px; height:60px" 
                                      alt="@item.Name" 
@@ -173,6 +181,7 @@
                             </td>
                             <td>
                                 <form asp-controller="RestaurantOwner" asp-action="ToggleItemStatus" asp-route-id="@item.Id" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
                                     @if (item.IsAvailable)
                                     {
                                         <button type="submit" class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill text-decoration-none" title="Nhấn để chuyển sang Tạm hết">
@@ -196,25 +205,6 @@
                                         <i class="fa-regular fa-trash-can"></i>
                                     </button>
                                 </div>
-
-                                <!-- Modal xác nhận xoá -->
-                                <div class="modal fade" id="deleteModal-@item.Id" tabindex="-1">
-                                    <div class="modal-dialog modal-dialog-centered">
-                                        <div class="modal-content rounded-4 text-start">
-                                            <div class="modal-body p-4 text-center">
-                                                <i class="fa-solid fa-triangle-exclamation text-danger fs-1 mb-3"></i>
-                                                <h5 class="fw-bold">Xoá món ăn?</h5>
-                                                <p class="text-muted small">Bạn có chắc chắn muốn xoá món <strong>@item.Name</strong> khỏi thực đơn? Món này sẽ không còn hiển thị cho khách đặt hàng.</p>
-                                                <div class="d-flex gap-2 mt-4 justify-content-center">
-                                                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Huỷ</button>
-                                                    <form asp-controller="RestaurantOwner" asp-action="DeleteMenuItem" asp-route-id="@item.Id" method="post">
-                                                        <button type="submit" class="btn btn-danger fw-bold px-4">Xoá món</button>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
                             </td>
                         </tr>
                     }
@@ -223,3 +213,26 @@
         </div>
     }
 </div>
+
+@foreach (var item in Model)
+{
+    <!-- Modal xác nhận xoá đặt ngoài bảng để không bị lỗi che khuất -->
+    <div class="modal fade" id="deleteModal-@item.Id" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 text-start">
+                <div class="modal-body p-4 text-center">
+                    <i class="fa-solid fa-triangle-exclamation text-danger fs-1 mb-3"></i>
+                    <h5 class="fw-bold">Xoá món ăn?</h5>
+                    <p class="text-muted small">Bạn có chắc chắn muốn xoá món <strong>@item.Name</strong> khỏi thực đơn? Món này sẽ không còn hiển thị cho khách đặt hàng.</p>
+                    <div class="d-flex gap-2 mt-4 justify-content-center">
+                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Huỷ</button>
+                        <form asp-controller="RestaurantOwner" asp-action="DeleteMenuItem" asp-route-id="@item.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-danger fw-bold px-4">Xoá món</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}

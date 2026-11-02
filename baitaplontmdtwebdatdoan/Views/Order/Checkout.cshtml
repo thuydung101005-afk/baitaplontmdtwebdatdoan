@@ -131,7 +131,7 @@
                                     <div class="fw-bold text-dark mb-1">@item.MenuItem.Name</div>
                                     <div class="text-muted small">
                                         Đơn giá: <span class="text-dark fw-semibold">@item.MenuItem.BasePrice.ToString("N0")đ</span>
-                                        &middot; SL: <span class="badge bg-light text-dark border px-2 py-1">x@item.Quantity</span>
+                                        &middot; SL: <span class="badge bg-light text-dark border px-2 py-1">x@(item.Quantity)</span>
                                     </div>
                                 </div>
                             </div>
@@ -596,6 +596,16 @@
                 voucherInput.value = code;
                 applyVoucher(code);
             });
+        });
+
+        // Tự động áp dụng mã voucher mà khách vừa bấm Lưu ở Kho Voucher (nếu có)
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedCode = localStorage.getItem('foodie_selected_voucher');
+            if (savedCode && voucherInput && !voucherInput.value) {
+                voucherInput.value = savedCode;
+                applyVoucher(savedCode);
+                localStorage.removeItem('foodie_selected_voucher');
+            }
         });
 
         // Xử lý chọn địa chỉ từ modal

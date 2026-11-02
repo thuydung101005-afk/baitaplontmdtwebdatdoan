@@ -1,56 +1,367 @@
 @model List<baitaplontmdtwebdatdoan.Models.ChatConversationViewModel>
 @{
     ViewData["Title"] = "Tin nhắn của tôi";
+    var conversations = Model ?? new List<baitaplontmdtwebdatdoan.Models.ChatConversationViewModel>();
+    var otherRestaurants = ViewBag.OtherRestaurants as List<baitaplontmdtwebdatdoan.Models.Restaurant> ?? new List<baitaplontmdtwebdatdoan.Models.Restaurant>();
+    var initRestId = ViewBag.InitialRestaurantId as long?;
+    var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0";
 }
 
-<div class="mb-4">
-    <h4 class="fw-bold mb-1"><i class="fa-regular fa-comments text-brand me-2"></i>TIN NHẮN CỦA TÔI</h4>
-    <p class="text-muted small mb-0">Các cuộc trò chuyện của bạn với nhà hàng. Bấm vào một quán để mở khung chat.</p>
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="fa-regular fa-comments text-brand me-2"></i>Tin nhắn của tôi</h4>
+        <p class="text-muted small mb-0">Trò chuyện trực tiếp với nhà hàng để hỏi món, dặn dò chế biến hoặc nhận mã ưu đãi</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a asp-controller="Support" asp-action="Index" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold text-nowrap">
+            <i class="fa-solid fa-headset me-1"></i> Chat CSKH 24/7
+        </a>
+        @if (User.IsInRole("restaurant_owner") || User.IsInRole("admin"))
+        {
+            <a asp-controller="Chat" asp-action="ShopInbox" class="btn btn-brand btn-sm rounded-pill px-3 fw-bold text-nowrap">
+                <i class="fa-solid fa-store me-1"></i> Hộp thư Quán
+            </a>
+        }
+    </div>
 </div>
 
-@if (!Model.Any())
-{
-    <div class="bg-white rounded-4 shadow-sm p-5 text-center text-muted">
-        <i class="fa-regular fa-comment-dots fs-1 mb-3 opacity-50"></i>
-        <p class="mb-3">Bạn chưa nhắn tin với quán nào.</p>
-        <a asp-controller="Restaurant" asp-action="Index" class="btn btn-brand fw-bold rounded-pill px-4">
-            <i class="fa-solid fa-store me-1"></i> Chọn nhà hàng để nhắn tin
-        </a>
-    </div>
-}
-else
-{
-    <div class="bg-white rounded-4 shadow-sm p-3">
-        <div class="list-group list-group-flush">
-            @foreach (var c in Model)
-            {
-                var logo = string.IsNullOrEmpty(c.RestaurantLogoUrl)
-                    ? "https://ui-avatars.com/api/?name=" + Uri.EscapeDataString(c.RestaurantName) + "&background=14402E&color=fff"
-                    : c.RestaurantLogoUrl;
-                var local = c.LastTimeUtc.ToLocalTime();
-                var timeText = local.Date == DateTime.Now.Date ? local.ToString("HH:mm") : local.ToString("dd/MM HH:mm");
+<!-- GIAO DIỆN CHAT 2 CỘT CHUẨN MESSENGER / SHOPEE CHAT -->
+<div class="fd-chat-container mb-4">
+    <!-- CỘT TRÁI: DANH SÁCH HỘI THOẠI & NHÀ HÀNG -->
+    <div class="fd-chat-sidebar">
+        <div class="fd-chat-sidebar-head">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light border-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                <input type="text" id="convSearchInput" class="form-control bg-light border-0" placeholder="Tìm tên nhà hàng..." />
+            </div>
+        </div>
 
-                <a asp-controller="Restaurant" asp-action="Details" asp-route-id="@c.RestaurantId" asp-route-openChat="true"
-                   class="list-group-item list-group-item-action p-3 rounded-3 mb-2 border text-decoration-none">
-                    <div class="d-flex align-items-center gap-3">
-                        <img src="@logo" class="rounded-circle object-fit-cover shadow-xs border" width="48" height="48" alt="@c.RestaurantName"
-                             onerror="this.src='https://ui-avatars.com/api/?name=Foodie&background=14402E&color=fff';" />
+        <div class="fd-chat-list" id="myChatsList">
+            @if (conversations.Any())
+            {
+                <div class="px-2 pt-1 pb-1 text-muted fw-bold text-uppercase" style="font-size:11px; letter-spacing:.03em">
+                    Cuộc trò chuyện gần đây (@conversations.Count)
+                </div>
+                @foreach (var c in conversations)
+                {
+                    var logo = string.IsNullOrEmpty(c.RestaurantLogoUrl)
+                        ? "https://ui-avatars.com/api/?name=" + Uri.EscapeDataString(c.RestaurantName) + "&background=14402E&color=fff"
+                        : c.RestaurantLogoUrl;
+                    var local = c.LastTimeUtc.ToLocalTime();
+                    var timeText = local.Date == DateTime.Now.Date ? local.ToString("HH:mm") : local.ToString("dd/MM");
+
+                    <div class="fd-conv-card my-conv-item"
+                         id="myconv-@c.RestaurantId"
+                         data-rest-id="@c.RestaurantId"
+                         data-rest-name="@c.RestaurantName"
+                         data-rest-logo="@logo">
+                        <div class="position-relative flex-shrink-0">
+                            <img src="@logo" class="rounded-circle object-fit-cover border bg-white" width="46" height="46" alt="@c.RestaurantName"
+                                 onerror="this.src='https://ui-avatars.com/api/?name=Foodie&background=14402E&color=fff';" />
+                            <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle p-1"></span>
+                        </div>
                         <div class="flex-grow-1 overflow-hidden">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <div class="fw-bold text-dark text-truncate">@c.RestaurantName</div>
-                                <div class="text-muted ms-2 flex-shrink-0" style="font-size:11px">@timeText</div>
+                                <div class="fw-bold text-dark text-truncate small">@c.RestaurantName</div>
+                                <div class="text-muted conv-time ms-2 flex-shrink-0" style="font-size:11px">@timeText</div>
                             </div>
-                            <div class="text-muted small text-truncate @(c.UnreadCount > 0 ? "fw-bold text-dark" : "")">
+                            <div class="text-muted small text-truncate conv-preview @(c.UnreadCount > 0 ? "fw-bold text-dark" : "")" style="font-size:12px">
                                 @(c.LastSenderRole == "customer" ? "Bạn: " : "")@c.LastMessage
                             </div>
                         </div>
                         @if (c.UnreadCount > 0)
                         {
-                            <span class="badge bg-danger rounded-pill">@c.UnreadCount</span>
+                            <span class="badge bg-danger rounded-pill conv-unread">@c.UnreadCount</span>
                         }
                     </div>
-                </a>
+                }
+            }
+
+            @if (otherRestaurants.Any())
+            {
+                <div class="px-2 pt-2 pb-1 text-muted fw-bold text-uppercase" style="font-size:11px; letter-spacing:.03em">
+                    Gợi ý quán đang hoạt động
+                </div>
+                @foreach (var r in otherRestaurants)
+                {
+                    var logo = string.IsNullOrEmpty(r.LogoUrl)
+                        ? "https://ui-avatars.com/api/?name=" + Uri.EscapeDataString(r.Name) + "&background=14402E&color=fff"
+                        : r.LogoUrl;
+
+                    <div class="fd-conv-card my-conv-item"
+                         id="myconv-@r.Id"
+                         data-rest-id="@r.Id"
+                         data-rest-name="@r.Name"
+                         data-rest-logo="@logo">
+                        <div class="position-relative flex-shrink-0">
+                            <img src="@logo" class="rounded-circle object-fit-cover border bg-white" width="42" height="42" alt="@r.Name"
+                                 onerror="this.src='https://ui-avatars.com/api/?name=Foodie&background=14402E&color=fff';" />
+                            <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle p-1"></span>
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="fw-bold text-dark text-truncate small">@r.Name</div>
+                            <div class="text-muted small text-truncate conv-preview" style="font-size:11px">
+                                ⭐ @r.AvgRating.ToString("0.0") &bull; Bấm để bắt đầu nhắn tin
+                            </div>
+                        </div>
+                    </div>
+                }
             }
         </div>
     </div>
+
+    <!-- CỘT PHẢI: KHUNG CHAT TRỰC TIẾP VỚI NHÀ HÀNG -->
+    <div class="fd-chat-main">
+        <!-- Header cuộc trò chuyện -->
+        <div class="fd-chat-header">
+            <div class="d-flex align-items-center gap-2 gap-sm-3 min-w-0">
+                <button type="button" class="fd-chat-back-btn" onclick="closeMobileChatView()" title="Quay lại danh sách hộp thư">
+                    <i class="fa-solid fa-arrow-left"></i> <span>Hộp thư</span>
+                </button>
+                <div class="position-relative flex-shrink-0">
+                    <img id="activeRestLogo" src="https://ui-avatars.com/api/?name=Foodie&background=14402E&color=fff"
+                         class="rounded-circle object-fit-cover border" width="42" height="42" alt="Logo"
+                         onerror="this.src='https://ui-avatars.com/api/?name=Foodie&background=14402E&color=fff';" />
+                    <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle p-1"></span>
+                </div>
+                <div class="min-w-0">
+                    <div class="fw-bold text-dark text-truncate" id="activeRestName">Chọn một nhà hàng bên trái để trò chuyện</div>
+                    <div class="text-muted small text-truncate" id="activeRestSub">
+                        <i class="fa-solid fa-circle text-success me-1" style="font-size:8px"></i>Đang hoạt động &bull; Phản hồi trực tuyến
+                    </div>
+                </div>
+            </div>
+            <a id="btnViewRestMenu" href="/Restaurant" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold flex-shrink-0 d-none">
+                <i class="fa-solid fa-utensils me-1"></i> <span class="d-none d-sm-inline">Xem thực đơn</span>
+            </a>
+        </div>
+
+        <!-- Vùng tin nhắn -->
+        <div class="fd-chat-body" id="customerChatBody">
+            <div class="text-center py-5 text-muted small my-auto">
+                <i class="fa-regular fa-comments fs-1 mb-2 text-brand opacity-50"></i>
+                <div class="fw-semibold text-dark mb-1">Chào mừng đến với Foodie Chat</div>
+                <div>Chọn một nhà hàng ở danh sách bên trái để nhắn tin trực tiếp với quán nhé!</div>
+            </div>
+        </div>
+
+        <!-- Câu hỏi gợi ý nhanh (Gọn gàng 1-2 hàng trên điện thoại) -->
+        <div class="fd-chat-chips">
+            <span class="fd-chat-chip cust-quick-chip" data-msg="Quán còn mở cửa không ạ?">👋 Còn mở cửa không?</span>
+            <span class="fd-chat-chip cust-quick-chip" data-msg="Món nào bán chạy nhất tại quán ạ?">🍜 Món bán chạy?</span>
+            <span class="fd-chat-chip cust-quick-chip" data-msg="Quán có mã giảm giá nào không ạ?">🎟️ Mã giảm giá?</span>
+            <span class="fd-chat-chip cust-quick-chip" data-msg="Cho mình xin thêm dụng cụ ăn uống nhé!">🥢 Thêm dụng cụ ăn</span>
+        </div>
+
+        <!-- Khung nhập tin nhắn -->
+        <div class="fd-chat-footer">
+            <div class="fd-chat-input-wrap">
+                <input type="text" id="custChatInput" placeholder="Nhập tin nhắn gửi cho nhà hàng..." disabled />
+                <button type="button" id="custChatSendBtn" class="fd-chat-send-btn" disabled>
+                    <i class="fa-solid fa-paper-plane"></i> <span>Gửi</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        const currentUserId = "@currentUserId";
+        let activeRestId = null;
+        let activeRestLogoUrl = "https://ui-avatars.com/api/?name=Foodie&background=14402E&color=fff";
+        const pendingOwn = [];
+
+        const chatHub = new signalR.HubConnectionBuilder()
+            .withUrl("/chatHub")
+            .withAutomaticReconnect()
+            .build();
+
+        chatHub.onreconnected(function () {
+            if (activeRestId) {
+                chatHub.invoke("JoinChatRoom", activeRestId.toString(), currentUserId.toString()).catch(() => {});
+            }
+        });
+
+        chatHub.on("ReceiveMessage", function (role, senderName, text, time) {
+            if (role === 'customer') {
+                const idx = pendingOwn.indexOf(text);
+                if (idx !== -1) { pendingOwn.splice(idx, 1); return; }
+            }
+            appendMsgBubble(role === 'customer', senderName, text, time);
+            updateConvPreview(activeRestId, role === 'customer' ? 'Bạn: ' + text : text, time);
+        });
+
+        chatHub.start().catch(err => console.error(err));
+
+        function nowTime() {
+            return new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+        }
+
+        function updateConvPreview(restId, previewText, timeStr) {
+            const card = document.getElementById(`myconv-${restId}`);
+            if (!card) return;
+            const prevEl = card.querySelector('.conv-preview');
+            const timeEl = card.querySelector('.conv-time');
+            if (prevEl) prevEl.textContent = previewText;
+            if (timeEl) timeEl.textContent = timeStr;
+        }
+
+        async function openRestaurantChat(restId, restName, restLogo) {
+            if (activeRestId && String(activeRestId) !== String(restId)) {
+                await chatHub.invoke("LeaveChatRoom", activeRestId.toString(), currentUserId.toString()).catch(() => {});
+            }
+
+            activeRestId = restId;
+            activeRestLogoUrl = restLogo || `https://ui-avatars.com/api/?name=${encodeURIComponent(restName)}&background=14402E&color=fff`;
+            pendingOwn.length = 0;
+
+            document.getElementById('activeRestName').textContent = restName;
+            document.getElementById('activeRestLogo').src = activeRestLogoUrl;
+            const menuBtn = document.getElementById('btnViewRestMenu');
+            menuBtn.href = `/Restaurant/Details/${restId}`;
+            menuBtn.classList.remove('d-none');
+
+            document.getElementById('custChatInput').disabled = false;
+            document.getElementById('custChatSendBtn').disabled = false;
+
+            if (chatHub.state === signalR.HubConnectionState.Connected) {
+                await chatHub.invoke("JoinChatRoom", restId.toString(), currentUserId.toString()).catch(() => {});
+            }
+
+            fetch(`/Chat/GetMessages?restaurantId=${restId}&customerId=${currentUserId}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(data => {
+                const body = document.getElementById('customerChatBody');
+                body.innerHTML = '';
+                if (data && data.messages && data.messages.length > 0) {
+                    data.messages.forEach(m => {
+                        appendMsgBubble(m.isMe, m.senderName, m.message, m.time);
+                    });
+                } else {
+                    body.innerHTML = `
+                        <div class="chat-empty text-center text-muted small my-auto py-4">
+                            <i class="fa-regular fa-hand-peace fs-2 mb-2 text-brand"></i>
+                            <div class="fw-semibold text-dark mb-1">Bắt đầu trò chuyện với ${escapeHtml(restName)}</div>
+                            <div>Bạn có thể bấm vào các câu gợi ý bên dưới hoặc nhập nội dung cần hỏi quán nhé!</div>
+                        </div>`;
+                }
+                body.scrollTop = body.scrollHeight;
+                if (typeof updateChatBadge === 'function') updateChatBadge();
+            });
+        }
+
+        function appendMsgBubble(isMe, senderName, text, time) {
+            const body = document.getElementById('customerChatBody');
+            const empty = body.querySelector('.chat-empty');
+            if (empty) empty.remove();
+
+            const row = document.createElement('div');
+            row.className = `fd-msg-row ${isMe ? 'is-me' : 'is-other'}`;
+
+            row.innerHTML = `
+                ${!isMe ? `<img src="${activeRestLogoUrl}" class="fd-msg-avatar" alt="avatar" onerror="this.src='https://ui-avatars.com/api/?name=Shop&background=14402E&color=fff';" />` : ''}
+                <div class="fd-msg-bubble">
+                    ${!isMe ? `<div class="fd-msg-sender">${escapeHtml(senderName)}</div>` : ''}
+                    <div>${escapeHtml(text)}</div>
+                    <div class="fd-msg-time">${time}</div>
+                </div>
+            `;
+            body.appendChild(row);
+            body.scrollTop = body.scrollHeight;
+            return row;
+        }
+
+        function sendCustMsg(customText) {
+            const input = document.getElementById('custChatInput');
+            const text = (customText || input.value).trim();
+            if (!text || !activeRestId) return;
+            if (!customText) input.value = '';
+
+            const t = nowTime();
+            pendingOwn.push(text);
+            const row = appendMsgBubble(true, 'Bạn', text, t);
+            updateConvPreview(activeRestId, 'Bạn: ' + text, t);
+
+            fetch('/Chat/SendMessage', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: `restaurantId=${activeRestId}&customerId=${currentUserId}&message=${encodeURIComponent(text)}`
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (!d || !d.success) throw new Error(d?.message || 'Không gửi được tin nhắn');
+            })
+            .catch(err => {
+                const i = pendingOwn.indexOf(text);
+                if (i !== -1) pendingOwn.splice(i, 1);
+                row.remove();
+                alert(err.message);
+            });
+        }
+
+        function closeMobileChatView() {
+            const container = document.querySelector('.fd-chat-container');
+            if (container) container.classList.remove('mobile-chat-open');
+        }
+
+        document.querySelectorAll('.my-conv-item').forEach(item => {
+            item.addEventListener('click', function () {
+                document.querySelectorAll('.my-conv-item').forEach(x => x.classList.remove('active'));
+                item.classList.add('active');
+                const badge = item.querySelector('.conv-unread');
+                if (badge) badge.remove();
+
+                const container = document.querySelector('.fd-chat-container');
+                if (container) container.classList.add('mobile-chat-open');
+
+                openRestaurantChat(item.dataset.restId, item.dataset.restName, item.dataset.restLogo);
+            });
+        });
+
+        document.getElementById('custChatSendBtn').addEventListener('click', () => sendCustMsg());
+        document.getElementById('custChatInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') sendCustMsg();
+        });
+
+        document.querySelectorAll('.cust-quick-chip').forEach(chip => {
+            chip.addEventListener('click', function () {
+                if (!activeRestId) return;
+                sendCustMsg(this.dataset.msg || this.innerText.replace(/^[^\wÀ-ỹ]+/, '').trim());
+            });
+        });
+
+        document.getElementById('convSearchInput').addEventListener('input', function () {
+            const q = this.value.toLowerCase().trim();
+            document.querySelectorAll('.my-conv-item').forEach(el => {
+                const name = (el.dataset.restName || '').toLowerCase();
+                el.style.display = name.includes(q) ? '' : 'none';
+            });
+        });
+
+        function escapeHtml(text) {
+            const d = document.createElement('div');
+            d.innerText = text == null ? '' : text;
+            return d.innerHTML;
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const initR = "@(initRestId?.ToString() ?? "")";
+            if (initR) {
+                const target = document.getElementById(`myconv-${initR}`);
+                if (target) { target.click(); return; }
+            }
+            // Trên máy tính (>= 992px) tự mở cuộc hội thoại đầu tiên; trên điện thoại hiện danh sách Hộp thư trước
+            if (window.innerWidth >= 992) {
+                const first = document.querySelector('.my-conv-item');
+                if (first) first.click();
+            }
+        });
+    </script>
 }

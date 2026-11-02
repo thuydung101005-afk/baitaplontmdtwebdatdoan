@@ -1,7 +1,12 @@
-﻿@{
-    ViewData["Title"] = "Quản trị hệ thống";
-    var pending = (List<baitaplontmdtwebdatdoan.Models.Restaurant>)ViewBag.PendingRestaurants;
-    var approved = (List<baitaplontmdtwebdatdoan.Models.Restaurant>)ViewBag.ApprovedRestaurants;
+@{
+    ViewData["Title"] = "Quản trị hệ thống Foodie";
+    var pending = ViewBag.PendingRestaurants as List<baitaplontmdtwebdatdoan.Models.Restaurant> ?? new List<baitaplontmdtwebdatdoan.Models.Restaurant>();
+    var approved = ViewBag.ApprovedRestaurants as List<baitaplontmdtwebdatdoan.Models.Restaurant> ?? new List<baitaplontmdtwebdatdoan.Models.Restaurant>();
+    var platformRevenue = (decimal)(ViewBag.PlatformRevenue ?? 0m);
+    var totalGMV = (decimal)(ViewBag.TotalGMV ?? 0m);
+    var escrowHolding = (decimal)(ViewBag.EscrowHolding ?? 0m);
+    var activeVoucherCount = (int)(ViewBag.ActiveVoucherCount ?? 0);
+    var unreadSupportCount = (int)(ViewBag.UnreadSupportCount ?? 0);
 
     string GetStatusLabel(string status) => status switch
     {
@@ -21,18 +26,79 @@
     };
 }
 
-<h4 class="fw-bold mb-4">Quản trị hệ thống</h4>
+<!-- HEADER & TABS QUẢN TRỊ ADMIN -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="fa-solid fa-shield-halved text-brand me-2"></i>TRUNG TÂM QUẢN TRỊ SÀN FOODIE (ADMIN)</h4>
+        <p class="text-muted small mb-0">Quản lý đối tác nhà hàng, doanh thu hoa hồng sàn, trung gian thanh toán, khuyến mãi và CSKH</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a asp-controller="Admin" asp-action="Revenue" class="btn btn-success btn-sm rounded-pill px-3 fw-bold shadow-xs">
+            <i class="fa-solid fa-chart-line me-1"></i> Báo cáo Doanh thu Sàn
+        </a>
+        <a asp-controller="Voucher" asp-action="Manage" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold shadow-xs">
+            <i class="fa-solid fa-ticket me-1"></i> Quản lý Voucher (@activeVoucherCount)
+        </a>
+        <a asp-controller="Support" asp-action="AdminInbox" class="btn btn-danger btn-sm rounded-pill px-3 fw-bold shadow-xs">
+            <i class="fa-solid fa-headset me-1"></i> CSKH Người thật
+            @if (unreadSupportCount > 0)
+            {
+                <span class="badge bg-white text-danger rounded-pill ms-1">@unreadSupportCount</span>
+            }
+        </a>
+    </div>
+</div>
+
+<!-- 4 THẺ TỔNG QUAN NHANH CHO ADMIN -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="bg-white rounded-4 p-3 shadow-sm border-start border-4 border-success h-100">
+            <div class="text-muted small fw-semibold">Doanh thu thuần của Sàn</div>
+            <div class="fs-4 fw-bold text-success my-1">@platformRevenue.ToString("N0") ₫</div>
+            <a asp-controller="Admin" asp-action="Revenue" class="small text-decoration-none text-success fw-semibold">
+                Xem chi tiết hoa hồng <i class="fa-solid fa-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="bg-white rounded-4 p-3 shadow-sm border-start border-4 border-primary h-100">
+            <div class="text-muted small fw-semibold">Tiền giữ Trung gian (Escrow)</div>
+            <div class="fs-4 fw-bold text-primary my-1">@escrowHolding.ToString("N0") ₫</div>
+            <div class="text-muted small">Tổng GMV: @totalGMV.ToString("N0")₫</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="bg-white rounded-4 p-3 shadow-sm border-start border-4 border-warning h-100">
+            <div class="text-muted small fw-semibold">Voucher đang hoạt động</div>
+            <div class="fs-4 fw-bold text-warning-emphasis my-1">@activeVoucherCount mã</div>
+            <a asp-controller="Voucher" asp-action="Manage" class="small text-decoration-none text-warning-emphasis fw-semibold">
+                Tạo & phát hành mã mới <i class="fa-solid fa-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="bg-white rounded-4 p-3 shadow-sm border-start border-4 border-danger h-100">
+            <div class="text-muted small fw-semibold">Hỗ trợ CSKH trực tuyến</div>
+            <div class="fs-4 fw-bold text-danger my-1">@unreadSupportCount tin mới</div>
+            <a asp-controller="Support" asp-action="AdminInbox" class="small text-decoration-none text-danger fw-semibold">
+                Mở hộp thư trả lời khách <i class="fa-solid fa-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+</div>
 
 @if (TempData["SuccessMessage"] != null)
 {
-    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+    <div class="alert alert-success rounded-4 shadow-sm">@TempData["SuccessMessage"]</div>
 }
 
-<h5 class="fw-bold mb-3">Nhà hàng chờ duyệt (@pending.Count)</h5>
+<h5 class="fw-bold mb-3"><i class="fa-solid fa-clock text-warning me-2"></i>Nhà hàng chờ duyệt (@pending.Count)</h5>
 
 @if (!pending.Any())
 {
-    <p class="text-muted mb-4">Không có nhà hàng nào đang chờ duyệt.</p>
+    <div class="bg-white rounded-4 shadow-sm p-4 text-muted mb-4">
+        <i class="fa-solid fa-circle-check text-success me-2"></i>Hiện không có nhà hàng nào đang chờ duyệt.
+    </div>
 }
 
 @foreach (var r in pending)
@@ -45,14 +111,14 @@
         </div>
         <div class="d-flex gap-2">
             <form asp-controller="Admin" asp-action="ApproveRestaurant" asp-route-id="@r.Id" method="post">
-                <button type="submit" class="btn btn-success btn-sm fw-bold">
-                    <i class="fa-solid fa-check me-1"></i> Duyệt
+                <button type="submit" class="btn btn-success btn-sm fw-bold rounded-3 px-3">
+                    <i class="fa-solid fa-check me-1"></i> Duyệt mở quán
                 </button>
             </form>
             <form asp-controller="Admin" asp-action="RejectRestaurant" asp-route-id="@r.Id" method="post"
                   onsubmit="return confirm('Từ chối nhà hàng này?');">
                 <input type="hidden" name="reason" value="Không đạt yêu cầu" />
-                <button type="submit" class="btn btn-outline-danger btn-sm fw-bold">
+                <button type="submit" class="btn btn-outline-danger btn-sm fw-bold rounded-3 px-3">
                     <i class="fa-solid fa-xmark me-1"></i> Từ chối
                 </button>
             </form>
@@ -60,15 +126,21 @@
     </div>
 }
 
-<hr class="my-4" />
-
-<h5 class="fw-bold mb-3">Tất cả nhà hàng khác</h5>
+<h5 class="fw-bold mb-3 mt-4"><i class="fa-solid fa-store text-brand me-2"></i>Danh sách đối tác nhà hàng (@approved.Count)</h5>
 <div class="bg-white rounded-4 shadow-sm p-3">
     @foreach (var r in approved)
     {
         <div class="d-flex justify-content-between align-items-center border-bottom py-2">
-            <span>@r.Name</span>
-            <span class="badge @GetStatusBadge(r.Status)">@GetStatusLabel(r.Status)</span>
+            <div>
+                <span class="fw-semibold text-dark">@r.Name</span>
+                <span class="text-muted small ms-2">(@r.Address)</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <a asp-controller="Admin" asp-action="Revenue" asp-route-restaurantId="@r.Id" class="btn btn-light border btn-sm rounded-pill px-3 small">
+                    <i class="fa-solid fa-chart-pie text-success me-1"></i>Xem doanh thu quán
+                </a>
+                <span class="badge @GetStatusBadge(r.Status) rounded-pill px-3 py-1">@GetStatusLabel(r.Status)</span>
+            </div>
         </div>
     }
 </div>

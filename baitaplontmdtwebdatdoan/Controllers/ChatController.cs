@@ -23,21 +23,43 @@ namespace baitaplontmdtwebdatdoan.Controllers
 
         private long CurrentUserId => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+        private static readonly TimeZoneInfo VnTimeZone = ResolveVnTimeZone();
+
+        private static TimeZoneInfo ResolveVnTimeZone()
+        {
+            try { return TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"); }
+            catch
+            {
+                try { return TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh"); }
+                catch { return TimeZoneInfo.Utc; }
+            }
+        }
+
+        private static string FormatTime(DateTime utc)
+        {
+            var asUtc = DateTime.SpecifyKind(utc, DateTimeKind.Utc);
+            return TimeZoneInfo.ConvertTimeFromUtc(asUtc, VnTimeZone).ToString("HH:mm");
+        }
+
         // GET /Chat/GetMessages?restaurantId=1&customerId=2
         [HttpGet]
         public async Task<IActionResult> GetMessages(long restaurantId, long? customerId)
         {
             var restaurant = await _context.Restaurants.FindAsync(restaurantId);
-            if (restaurant == null) return NotFound(new { message = "Không tìm thấy quán ăn" });
+            if (restaurant == null)
+                return NotFound(new { success = false, message = "Không tìm thấy quán ăn" });
+
+            var isAdmin = User.IsInRole("admin");
+            var isOwner = CurrentUserId == restaurant.OwnerId;
 
             long targetCustomerId;
-            if (CurrentUserId == restaurant.OwnerId)
+            if ((isOwner || isAdmin) && customerId.HasValue && customerId.Value > 0 && customerId.Value != restaurant.OwnerId)
             {
-                targetCustomerId = customerId ?? 0;
-                if (targetCustomerId == 0)
-                {
-                    return Json(new { messages = new List<object>() });
-                }
+                targetCustomerId = customerId.Value;
+            }
+            else if (isOwner && (!customerId.HasValue || customerId.Value == 0 || customerId.Value == restaurant.OwnerId))
+            {
+                return Json(new { success = true, isOwnerSelf = true, messages = new List<object>() });
             }
             else
             {
@@ -48,11 +70,11 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 .Include(m => m.Sender)
                 .Where(m => m.RestaurantId == restaurantId && m.CustomerId == targetCustomerId)
                 .OrderBy(m => m.CreatedAt)
-                .Take(100)
+                .Take(150)
                 .ToListAsync();
 
-            // Đánh dấu đã đọc các tin nhắn gửi tới người dùng hiện tại
-            var unread = messages.Where(m => !m.IsRead && m.SenderId != CurrentUserId).ToList();
+            var viewerRole = (isOwner || (isAdmin && targetCustomerId != CurrentUserId)) ? "restaurant" : "customer";
+            var unread = messages.Where(m => !m.IsRead && m.SenderRole != viewerRole).ToList();
             if (unread.Any())
             {
                 foreach (var u in unread) u.IsRead = true;
@@ -66,8 +88,8 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 senderRole = m.SenderRole,
                 senderName = m.SenderRole == "restaurant" ? restaurant.Name : (m.Sender?.FullName ?? "Khách hàng"),
                 message = m.Message,
-                time = m.CreatedAt.ToString("HH:mm"),
-                isMe = m.SenderId == CurrentUserId
+                time = FormatTime(m.CreatedAt),
+                isMe = m.SenderRole == viewerRole
             });
 
             return Json(new { success = true, messages = result });
@@ -88,23 +110,35 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 return Json(new { success = false, message = "Không tìm thấy quán ăn." });
             }
 
+            var isAdmin = User.IsInRole("admin");
+            var isOwner = CurrentUserId == restaurant.OwnerId;
+
             string senderRole;
             long targetCustomerId;
 
-            if (CurrentUserId == restaurant.OwnerId)
+            if ((isOwner || isAdmin) && customerId.HasValue && customerId.Value > 0 && customerId.Value != restaurant.OwnerId)
             {
                 senderRole = "restaurant";
-                targetCustomerId = customerId ?? 0;
-                if (targetCustomerId == 0)
+                targetCustomerId = customerId.Value;
+            }
+            else if (isOwner)
+            {
+                return Json(new
                 {
-                    return Json(new { success = false, message = "Chưa chọn khách hàng để trả lời." });
-                }
+                    success = false,
+                    message = "Bạn là chủ quán ăn này. Vui lòng vào mục 'Tin nhắn khách hàng' (Shop Inbox) để trả lời khách nhé!"
+                });
             }
             else
             {
                 senderRole = "customer";
                 targetCustomerId = CurrentUserId;
             }
+
+            var senderUser = await _context.Users.FindAsync(CurrentUserId);
+            var customerUser = targetCustomerId == CurrentUserId
+                ? senderUser
+                : await _context.Users.FindAsync(targetCustomerId);
 
             var now = DateTime.UtcNow;
             var chatMsg = new ChatMessage
@@ -121,14 +155,33 @@ namespace baitaplontmdtwebdatdoan.Controllers
             _context.ChatMessages.Add(chatMsg);
             await _context.SaveChangesAsync();
 
-            var senderName = senderRole == "restaurant" ? restaurant.Name : (User.Identity?.Name ?? "Khách hàng");
-            var timeStr = now.ToString("HH:mm");
+            var senderName = senderRole == "restaurant"
+                ? restaurant.Name
+                : (senderUser?.FullName ?? User.Identity?.Name ?? "Khách hàng");
+            var customerName = customerUser?.FullName ?? "Khách hàng";
+            var timeStr = FormatTime(now);
 
-            // Bắn SignalR tới phòng chat
+            // 1. Bắn SignalR tới phòng chat đang mở
             await _chatHub.Clients.Group($"chat-{restaurantId}-{targetCustomerId}")
                 .SendAsync("ReceiveMessage", senderRole, senderName, chatMsg.Message, timeStr);
 
-            // Tự động trả lời thông minh (Auto-reply) nếu khách nhắn tin lần đầu trong phiên
+            // 2. Bắn SignalR cập nhật danh sách bên trái của ShopInbox (Chủ quán & Admin)
+            var inboxPayload = new
+            {
+                restaurantId = restaurant.Id,
+                restaurantName = restaurant.Name,
+                customerId = targetCustomerId,
+                customerName = customerName,
+                senderRole = senderRole,
+                message = chatMsg.Message,
+                time = timeStr
+            };
+            await _chatHub.Clients.Group($"shop-owner-{restaurant.OwnerId}")
+                .SendAsync("ShopInboxUpdated", inboxPayload);
+            await _chatHub.Clients.Group("admin-shop-inbox")
+                .SendAsync("ShopInboxUpdated", inboxPayload);
+
+            // 3. Tự động trả lời thông minh (Auto-reply) nếu khách nhắn tin lần đầu cho quán
             if (senderRole == "customer")
             {
                 var previousMsgCount = await _context.ChatMessages
@@ -136,31 +189,32 @@ namespace baitaplontmdtwebdatdoan.Controllers
 
                 if (previousMsgCount == 0)
                 {
-                    // Lời chào tự động của quán
+                    var autoReplyText = $"Dạ chào {customerName}! Cảm ơn bạn đã nhắn tin cho {restaurant.Name}. Quán đã nhận được tin nhắn và sẽ phản hồi bạn ngay ạ. Bạn có thể xem thực đơn hoặc áp mã giảm giá của quán trong lúc chờ nhé! ❤️";
                     var autoReply = new ChatMessage
                     {
                         SenderId = restaurant.OwnerId,
                         RestaurantId = restaurantId,
                         CustomerId = targetCustomerId,
                         SenderRole = "restaurant",
-                        Message = $"Dạ chào bạn! Cảm ơn bạn đã nhắn tin cho {restaurant.Name}. Quán đã nhận được tin nhắn và sẽ phản hồi bạn trong giây lát. Bạn có thể tham khảo Menu hoặc thêm món vào giỏ trong lúc chờ nhé! ❤️",
-                        IsRead = true, // khách đang online trong khung chat nên đã thấy lời chào này
+                        Message = autoReplyText,
+                        IsRead = true,
                         CreatedAt = DateTime.UtcNow.AddSeconds(1)
                     };
                     _context.ChatMessages.Add(autoReply);
                     await _context.SaveChangesAsync();
 
+                    var autoTime = FormatTime(autoReply.CreatedAt);
                     await _chatHub.Clients.Group($"chat-{restaurantId}-{targetCustomerId}")
-                        .SendAsync("ReceiveMessage", "restaurant", restaurant.Name, autoReply.Message, autoReply.CreatedAt.ToString("HH:mm"));
+                        .SendAsync("ReceiveMessage", "restaurant", restaurant.Name, autoReply.Message, autoTime);
                 }
             }
 
-            return Json(new { success = true });
+            return Json(new { success = true, time = timeStr });
         }
 
-        // GET /Chat/MyChats - Hộp thư của khách: danh sách các quán mình đã nhắn tin
+        // GET /Chat/MyChats - Hộp thư của khách: giao diện nhắn tin trực tiếp với các quán
         [HttpGet]
-        public async Task<IActionResult> MyChats()
+        public async Task<IActionResult> MyChats(long? restaurantId = null)
         {
             var messages = await _context.ChatMessages
                 .Include(m => m.Restaurant)
@@ -172,7 +226,7 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 .GroupBy(m => m.RestaurantId)
                 .Select(g =>
                 {
-                    var last = g.First(); // đã sắp xếp mới nhất lên đầu
+                    var last = g.First();
                     return new ChatConversationViewModel
                     {
                         RestaurantId = g.Key,
@@ -187,6 +241,15 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 .OrderByDescending(c => c.LastTimeUtc)
                 .ToList();
 
+            var existingIds = conversations.Select(c => c.RestaurantId).ToHashSet();
+            var otherRestaurants = await _context.Restaurants
+                .Where(r => r.DeletedAt == null && r.Status == "open" && r.OwnerId != CurrentUserId && !existingIds.Contains(r.Id))
+                .OrderByDescending(r => r.AvgRating)
+                .Take(15)
+                .ToListAsync();
+
+            ViewBag.OtherRestaurants = otherRestaurants;
+            ViewBag.InitialRestaurantId = restaurantId;
             return View(conversations);
         }
 
@@ -201,9 +264,17 @@ namespace baitaplontmdtwebdatdoan.Controllers
             }
 
             var uid = CurrentUserId;
-            int count;
+            int count = 0;
 
-            if (User.IsInRole("restaurant_owner") || User.IsInRole("admin"))
+            if (User.IsInRole("admin"))
+            {
+                var shopUnread = await _context.ChatMessages
+                    .CountAsync(m => m.SenderRole == "customer" && !m.IsRead);
+                var supportUnread = await _context.SupportMessages
+                    .CountAsync(m => m.SenderRole == "customer" && !m.IsRead);
+                count = shopUnread + supportUnread;
+            }
+            else if (User.IsInRole("restaurant_owner"))
             {
                 var restIds = await _context.Restaurants
                     .Where(r => r.OwnerId == uid)
@@ -215,38 +286,60 @@ namespace baitaplontmdtwebdatdoan.Controllers
             }
             else
             {
-                count = await _context.ChatMessages
+                var shopReplyUnread = await _context.ChatMessages
                     .CountAsync(m => m.CustomerId == uid && m.SenderRole == "restaurant" && !m.IsRead);
+                var supportReplyUnread = await _context.SupportMessages
+                    .CountAsync(m => m.CustomerId == uid && m.SenderRole != "customer" && !m.IsRead);
+                count = shopReplyUnread + supportReplyUnread;
             }
 
             return Json(new { count });
         }
 
-        // GET /Chat/ShopInbox - Dành cho chủ quán xem danh sách tin nhắn từ khách
+        // GET /Chat/ShopInbox - Dành cho chủ quán hoặc admin xem danh sách tin nhắn từ khách
         [Authorize(Roles = "restaurant_owner,admin")]
-        public async Task<IActionResult> ShopInbox()
+        public async Task<IActionResult> ShopInbox(long? restaurantId = null, long? customerId = null)
         {
-            var myRestaurants = await _context.Restaurants
-                .Where(r => r.OwnerId == CurrentUserId && r.DeletedAt == null)
-                .ToListAsync();
+            var isAdmin = User.IsInRole("admin");
+
+            var myRestaurants = isAdmin
+                ? await _context.Restaurants.Where(r => r.DeletedAt == null).ToListAsync()
+                : await _context.Restaurants.Where(r => r.OwnerId == CurrentUserId && r.DeletedAt == null).ToListAsync();
 
             var restIds = myRestaurants.Select(r => r.Id).ToList();
 
-            var conversations = await _context.ChatMessages
+            var messages = await _context.ChatMessages
                 .Include(m => m.Customer)
                 .Include(m => m.Restaurant)
                 .Where(m => restIds.Contains(m.RestaurantId))
-                .GroupBy(m => new { m.RestaurantId, m.CustomerId })
-                .Select(g => new
-                {
-                    Restaurant = g.First().Restaurant,
-                    Customer = g.First().Customer,
-                    LastMessage = g.OrderByDescending(x => x.CreatedAt).FirstOrDefault(),
-                    UnreadCount = g.Count(x => !x.IsRead && x.SenderRole == "customer")
-                })
                 .ToListAsync();
 
+            var conversations = messages
+                .GroupBy(m => new { m.RestaurantId, m.CustomerId })
+                .Select(g =>
+                {
+                    var last = g.OrderByDescending(x => x.CreatedAt).First();
+                    return new ShopConversationViewModel
+                    {
+                        RestaurantId = g.Key.RestaurantId,
+                        RestaurantName = last.Restaurant?.Name ?? "Nhà hàng",
+                        RestaurantLogoUrl = last.Restaurant?.LogoUrl,
+                        CustomerId = g.Key.CustomerId,
+                        CustomerName = last.Customer?.FullName ?? $"Khách hàng #{g.Key.CustomerId}",
+                        CustomerEmail = last.Customer?.Email,
+                        LastMessage = last.Message,
+                        LastSenderRole = last.SenderRole,
+                        LastTime = FormatTime(last.CreatedAt),
+                        LastTimeUtc = last.CreatedAt,
+                        UnreadCount = g.Count(x => !x.IsRead && x.SenderRole == "customer")
+                    };
+                })
+                .OrderByDescending(c => c.LastTimeUtc)
+                .ToList();
+
             ViewBag.MyRestaurants = myRestaurants;
+            ViewBag.InitialRestaurantId = restaurantId;
+            ViewBag.InitialCustomerId = customerId;
             return View(conversations);
         }
     }

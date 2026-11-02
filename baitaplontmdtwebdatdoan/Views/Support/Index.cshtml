@@ -1,0 +1,341 @@
+@{
+    ViewData["Title"] = "Trung tâm Chăm sóc Khách hàng 24/7";
+    var recentOrders = ViewBag.RecentOrders as List<baitaplontmdtwebdatdoan.Models.Order> ?? new List<baitaplontmdtwebdatdoan.Models.Order>();
+    var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0";
+}
+
+<!-- HEADER BANNER -->
+<div class="rounded-4 p-4 mb-4 text-white shadow-sm" style="background: linear-gradient(135deg, #14402E 0%, #1D5C42 100%);">
+    <div class="row align-items-center g-3">
+        <div class="col-md-8">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge bg-warning text-dark fw-bold rounded-pill px-3 py-1">
+                    <i class="fa-solid fa-robot me-1"></i>Trợ lý AI & Chuyên viên CSKH
+                </span>
+                <span class="badge bg-white bg-opacity-25 text-white rounded-pill px-3 py-1">
+                    Hỗ trợ trực tuyến 24/7
+                </span>
+            </div>
+            <h3 class="fw-bold mb-1">Trung Tâm Chăm Sóc Khách Hàng Foodie</h3>
+            <p class="mb-0 opacity-90 small">
+                Tích hợp <strong>Trợ lý AI thông minh</strong> (tra cứu đơn hàng, voucher, món ăn tự động) và kết nối trực tiếp với <strong>Chuyên viên CSKH người thật</strong>.
+            </p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <a href="tel:19001234" class="btn btn-light text-brand fw-bold rounded-pill px-4 py-2 shadow-sm">
+                <i class="fa-solid fa-phone-volume me-2"></i>Hotline: 1900 1234
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- CỘT TRÁI: KHUNG CHAT TRỢ LÝ AI & LIÊN HỆ NGƯỜI THẬT -->
+    <div class="col-lg-8">
+        <div class="bg-white rounded-4 shadow-sm border overflow-hidden d-flex flex-column" style="height: 650px;">
+            <!-- Thanh tiêu đề & Chuyển đổi chế độ AI <-> Người thật -->
+            <div class="p-3 border-bottom bg-light d-flex flex-wrap justify-content-between align-items-center gap-2 flex-shrink-0">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="position-relative flex-shrink-0">
+                        <div id="supportModeAvatar" class="rounded-circle bg-brand text-white d-flex align-items-center justify-content-center shadow-xs" style="width:44px;height:44px;font-size:20px;">
+                            <i class="fa-solid fa-robot"></i>
+                        </div>
+                        <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle p-1"></span>
+                    </div>
+                    <div>
+                        <div class="fw-bold text-dark d-flex flex-wrap align-items-center gap-2">
+                            <span id="supportModeTitle">Trợ lý AI Foodie</span>
+                            <span id="supportModeBadge" class="badge bg-primary-subtle text-primary border border-primary rounded-pill small">Chế độ AI</span>
+                        </div>
+                        <div class="text-muted small" id="supportModeSub">
+                            Phản hồi tự động tức thì dựa trên dữ liệu đơn hàng & khuyến mãi thực tế
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nút chuyển đổi chế độ -->
+                <div class="btn-group btn-group-sm flex-shrink-0" role="group">
+                    <button type="button" id="btnModeAi" class="btn btn-brand fw-bold px-3 rounded-start-pill" onclick="switchSupportMode(false)">
+                        <i class="fa-solid fa-robot me-1"></i> Trợ lý AI
+                    </button>
+                    <button type="button" id="btnModeHuman" class="btn btn-outline-danger fw-bold px-3 rounded-end-pill" onclick="switchSupportMode(true)">
+                        <i class="fa-solid fa-headset me-1"></i> Gặp người thật
+                    </button>
+                </div>
+            </div>
+
+            <!-- Vùng hiển thị tin nhắn -->
+            <div class="fd-chat-messages" id="supportChatBox">
+                <div class="text-center py-5 text-muted small my-auto">
+                    <div class="spinner-border spinner-border-sm text-brand me-2"></div>Đang kết nối hệ thống CSKH...
+                </div>
+            </div>
+
+            <!-- Câu hỏi gợi ý nhanh (Gọn gàng 1-2 hàng trên điện thoại) -->
+            <div class="fd-chat-chips">
+                <span class="fd-chat-chip support-quick-pill" data-msg="Kiểm tra đơn hàng của tôi">📦 Kiểm tra đơn hàng</span>
+                <span class="fd-chat-chip support-quick-pill" data-msg="Hôm nay có mã giảm giá nào?">🎟️ Mã giảm giá hôm nay</span>
+                <span class="fd-chat-chip support-quick-pill" data-msg="Trung gian thanh toán hoạt động thế nào?">🛡️ Bảo vệ tiền Escrow</span>
+                <span class="fd-chat-chip support-quick-pill" data-msg="Gợi ý quán ngon được đánh giá cao">🍜 Gợi ý quán ngon</span>
+                <span class="fd-chat-chip text-danger border-danger-subtle bg-danger-subtle" onclick="switchSupportMode(true)">
+                    👨‍💼 Gặp nhân viên thật
+                </span>
+            </div>
+
+            <!-- Khung nhập tin nhắn -->
+            <div class="fd-chat-footer">
+                <div class="fd-chat-input-wrap">
+                    <input type="text" id="supportChatInput"
+                           placeholder="Nhập câu hỏi cho AI hoặc nhắn cho nhân viên CSKH..." />
+                    <button type="button" id="supportChatSendBtn" class="fd-chat-send-btn" title="Gửi tin nhắn">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CỘT PHẢI: KÊNH LIÊN HỆ NGƯỜI THẬT & ĐƠN HÀNG GẦN ĐÂY -->
+    <div class="col-lg-4">
+        <!-- Liên hệ nhanh người thật -->
+        <div class="bg-white rounded-4 shadow-sm p-4 mb-4 border-top border-4 border-danger">
+            <h6 class="fw-bold mb-2"><i class="fa-solid fa-user-tie text-danger me-2"></i>Kênh liên hệ Người thật trực tiếp</h6>
+            <p class="text-muted small mb-3">Nếu vấn đề phức tạp cần xử lý thủ công, bạn có thể kết nối trực tiếp với chuyên viên Foodie:</p>
+            <div class="d-flex flex-column gap-2 small mb-3">
+                <div class="d-flex justify-content-between py-1 border-bottom">
+                    <span class="text-muted"><i class="fa-solid fa-phone text-success me-2"></i>Tổng đài CSKH:</span>
+                    <strong class="text-dark">1900 1234 (Nhánh 1)</strong>
+                </div>
+                <div class="d-flex justify-content-between py-1 border-bottom">
+                    <span class="text-muted"><i class="fa-solid fa-envelope text-primary me-2"></i>Email giải quyết:</span>
+                    <strong class="text-dark">cskh@foodie.vn</strong>
+                </div>
+                <div class="d-flex justify-content-between py-1">
+                    <span class="text-muted"><i class="fa-solid fa-clock text-warning me-2"></i>Ca trực nhân viên:</span>
+                    <strong class="text-dark">08:00 - 22:00 hàng ngày</strong>
+                </div>
+            </div>
+            <button type="button" class="btn btn-danger w-100 fw-bold rounded-3 py-2" onclick="switchSupportMode(true)">
+                <i class="fa-solid fa-headset me-2"></i>Yêu cầu Nhân viên thật vào Chat ngay
+            </button>
+            @if (User.IsInRole("admin"))
+            {
+                <a asp-controller="Support" asp-action="AdminInbox" class="btn btn-dark w-100 fw-semibold rounded-3 py-2 mt-2">
+                    <i class="fa-solid fa-inbox me-2"></i>Mở Hộp thư Quản trị CSKH
+                </a>
+            }
+        </div>
+
+        <!-- Tra cứu nhanh đơn hàng của bạn -->
+        <div class="bg-white rounded-4 shadow-sm p-4">
+            <h6 class="fw-bold mb-3"><i class="fa-solid fa-box-open text-brand me-2"></i>Chọn đơn hàng cần hỗ trợ</h6>
+            @if (!recentOrders.Any())
+            {
+                <p class="text-muted small mb-0">Bạn chưa có đơn hàng nào gần đây.</p>
+            }
+            else
+            {
+                <div class="d-flex flex-column gap-2">
+                    @foreach (var o in recentOrders)
+                    {
+                        <div class="border rounded-3 p-2 small d-flex justify-content-between align-items-center bg-light">
+                            <div>
+                                <div class="fw-bold text-dark">#@o.OrderCode - @(o.Restaurant?.Name ?? "Nhà hàng")</div>
+                                <div class="text-muted" style="font-size:11px">Tổng: @o.TotalAmount.ToString("N0")đ &bull; @o.OrderStatus</div>
+                            </div>
+                            <button type="button" class="btn btn-outline-brand btn-sm rounded-pill px-2 py-1 flex-shrink-0" style="font-size:11px"
+                                    onclick="askAboutOrder('@o.OrderCode', '@(o.Restaurant?.Name ?? "")')">
+                                Hỏi đơn này
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        const currentCustomerId = "@currentUserId";
+        const supportBox = document.getElementById('supportChatBox');
+        const supportInput = document.getElementById('supportChatInput');
+        const supportSendBtn = document.getElementById('supportChatSendBtn');
+        const pendingSupportOwn = [];
+        let isHuman = false;
+
+        const supportHub = new signalR.HubConnectionBuilder()
+            .withUrl("/chatHub")
+            .withAutomaticReconnect()
+            .build();
+
+        supportHub.on("ReceiveSupportMessage", function(role, senderName, message, time, humanMode) {
+            if (typeof humanMode === 'boolean') {
+                updateModeUi(humanMode);
+            }
+            if (role === 'customer') {
+                const idx = pendingSupportOwn.indexOf(message);
+                if (idx !== -1) { pendingSupportOwn.splice(idx, 1); return; }
+            }
+            appendSupportBubble(role === 'customer', role, senderName, message, time);
+        });
+
+        supportHub.start()
+            .then(() => {
+                if (currentCustomerId && currentCustomerId !== "0") {
+                    supportHub.invoke("JoinSupportRoom", currentCustomerId);
+                }
+            })
+            .catch(err => console.error(err));
+
+        function updateModeUi(humanMode) {
+            isHuman = humanMode;
+            const titleEl = document.getElementById('supportModeTitle');
+            const badgeEl = document.getElementById('supportModeBadge');
+            const subEl = document.getElementById('supportModeSub');
+            const avatarEl = document.getElementById('supportModeAvatar');
+            const btnAi = document.getElementById('btnModeAi');
+            const btnHuman = document.getElementById('btnModeHuman');
+
+            if (humanMode) {
+                titleEl.textContent = 'Chuyên viên CSKH Foodie (Người thật)';
+                badgeEl.className = 'badge bg-danger text-white rounded-pill small';
+                badgeEl.textContent = 'Đang kết nối Người thật';
+                subEl.textContent = 'Chuyên viên hỗ trợ trực tiếp đang theo dõi cuộc trò chuyện của bạn';
+                avatarEl.className = 'rounded-circle bg-danger text-white d-flex align-items-center justify-content-center shadow-xs';
+                avatarEl.innerHTML = '<i class="fa-solid fa-headset"></i>';
+                btnHuman.className = 'btn btn-danger fw-bold px-3 rounded-end-pill';
+                btnAi.className = 'btn btn-outline-secondary fw-bold px-3 rounded-start-pill';
+            } else {
+                titleEl.textContent = 'Trợ lý AI Foodie';
+                badgeEl.className = 'badge bg-primary-subtle text-primary border border-primary rounded-pill small';
+                badgeEl.textContent = 'Chế độ AI';
+                subEl.textContent = 'Phản hồi tự động tức thì dựa trên dữ liệu đơn hàng & khuyến mãi thực tế';
+                avatarEl.className = 'rounded-circle bg-brand text-white d-flex align-items-center justify-content-center shadow-xs';
+                avatarEl.innerHTML = '<i class="fa-solid fa-robot"></i>';
+                btnAi.className = 'btn btn-brand fw-bold px-3 rounded-start-pill';
+                btnHuman.className = 'btn btn-outline-danger fw-bold px-3 rounded-end-pill';
+            }
+        }
+
+        function loadSupportHistory() {
+            fetch('/Support/GetMessages', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data || !data.success) return;
+                    supportBox.innerHTML = '';
+                    updateModeUi(data.isHumanMode);
+                    data.messages.forEach(m => {
+                        appendSupportBubble(m.isMe, m.senderRole, m.senderName, m.message, m.time);
+                    });
+                    supportBox.scrollTop = supportBox.scrollHeight;
+                });
+        }
+
+        function appendSupportBubble(isMe, role, senderName, text, time) {
+            const row = document.createElement('div');
+            row.className = 'fd-msg-row ' + (isMe ? 'me' : 'other');
+
+            const formattedText = escapeHtml(text).replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+            if (isMe) {
+                row.innerHTML = `
+                    <div class="fd-msg-bubble">
+                        <div>${formattedText}</div>
+                        <span class="fd-msg-meta">${time} <i class="fa-solid fa-check-double ms-1"></i></span>
+                    </div>
+                `;
+            } else {
+                const isAgent = role === 'agent';
+                const avatarBg = isAgent ? 'dc2626' : '14402E';
+                const badgeHtml = isAgent
+                    ? '<span class="badge bg-danger text-white ms-1" style="font-size:9px">Chuyên viên thật</span>'
+                    : '<span class="badge bg-primary-subtle text-primary ms-1" style="font-size:9px">Trợ lý AI</span>';
+                row.innerHTML = `
+                    <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(isAgent ? 'CS' : 'AI')}&background=${avatarBg}&color=fff"
+                         class="fd-msg-avatar" alt="avatar" />
+                    <div class="fd-msg-bubble">
+                        <div class="fw-bold mb-1" style="font-size:11px; color:${isAgent ? '#dc2626' : '#14402E'};">${escapeHtml(senderName)} ${badgeHtml}</div>
+                        <div>${formattedText}</div>
+                        <span class="fd-msg-meta">${time}</span>
+                    </div>
+                `;
+            }
+            supportBox.appendChild(row);
+            supportBox.scrollTop = supportBox.scrollHeight;
+        }
+
+        function sendSupportMsg(customText) {
+            const text = (customText || supportInput.value).trim();
+            if (!text) return;
+            if (!customText) supportInput.value = '';
+
+            const timeNow = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+            pendingSupportOwn.push(text);
+            appendSupportBubble(true, 'customer', 'Bạn', text, timeNow);
+
+            fetch('/Support/SendMessage', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: `message=${encodeURIComponent(text)}`
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d && typeof d.isHumanMode === 'boolean') {
+                    updateModeUi(d.isHumanMode);
+                }
+                if (d && d.isGuest && d.aiReply) {
+                    appendSupportBubble(false, d.senderRole || 'ai', d.senderName || 'Trợ lý AI Foodie', d.aiReply, d.time || timeNow);
+                }
+            });
+        }
+
+        function switchSupportMode(humanMode) {
+            fetch('/Support/SwitchMode', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: `humanMode=${humanMode}`
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d && d.success) {
+                    updateModeUi(d.isHumanMode);
+                    if (d.isGuest && d.message) {
+                        appendSupportBubble(false, d.senderRole || 'agent', d.senderName || 'Hệ thống CSKH Foodie', d.message, d.time || '');
+                    }
+                }
+            });
+        }
+
+        function askAboutOrder(orderCode, restName) {
+            sendSupportMsg(`Kiểm tra giúp tôi tiến độ đơn hàng #${orderCode} tại quán ${restName}`);
+        }
+
+        supportSendBtn.addEventListener('click', () => sendSupportMsg());
+        supportInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendSupportMsg();
+        });
+
+        document.querySelectorAll('.support-quick-pill').forEach(p => {
+            p.addEventListener('click', function() {
+                sendSupportMsg(this.dataset.msg || this.innerText.replace(/^[^\wÀ-ỹ]+/, '').trim());
+            });
+        });
+
+        function escapeHtml(text) {
+            const d = document.createElement('div');
+            d.innerText = text == null ? '' : text;
+            return d.innerHTML;
+        }
+
+        document.addEventListener('DOMContentLoaded', loadSupportHistory);
+    </script>
+}
+

@@ -24,6 +24,8 @@ public partial class FoodieDbContext : DbContext
 
     public virtual DbSet<ChatMessage> ChatMessages { get; set; }
 
+    public virtual DbSet<SupportMessage> SupportMessages { get; set; }
+
     public virtual DbSet<ItemOption> ItemOptions { get; set; }
 
     public virtual DbSet<ItemOptionGroup> ItemOptionGroups { get; set; }
@@ -1124,6 +1126,26 @@ public partial class FoodieDbContext : DbContext
                 .HasForeignKey(d => d.CustomerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_chat_customer");
+        });
+
+        modelBuilder.Entity<SupportMessage>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("support_messages");
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CustomerId).HasColumnName("customer_id");
+            entity.Property(e => e.SenderId).HasColumnName("sender_id");
+            entity.Property(e => e.SenderRole).HasMaxLength(50).HasColumnName("sender_role");
+            entity.Property(e => e.SenderName).HasMaxLength(150).HasColumnName("sender_name");
+            entity.Property(e => e.Message).HasColumnName("message");
+            entity.Property(e => e.IsHumanMode).HasColumnName("is_human_mode");
+            entity.Property(e => e.IsRead).HasColumnName("is_read");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())").HasColumnName("created_at");
+
+            entity.HasOne(d => d.Customer).WithMany()
+                .HasForeignKey(d => d.CustomerId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_support_customer");
         });
 
         OnModelCreatingPartial(modelBuilder);

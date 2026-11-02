@@ -1,96 +1,167 @@
-@model dynamic
+@model List<baitaplontmdtwebdatdoan.Models.ShopConversationViewModel>
 @{
     ViewData["Title"] = "Tin nhắn khách hàng - Quản lý quán";
-    var conversations = Model as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    var conversations = Model ?? new List<baitaplontmdtwebdatdoan.Models.ShopConversationViewModel>();
+    var initRestId = ViewBag.InitialRestaurantId as long?;
+    var initCustId = ViewBag.InitialCustomerId as long?;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
     <div>
-        <h4 class="fw-bold mb-1"><i class="fa-regular fa-comments text-brand me-2"></i>TIN NHẮN KHÁCH HÀNG</h4>
-        <p class="text-muted small mb-0">Trả lời tin nhắn và chăm sóc khách hàng trực tuyến theo thời gian thực</p>
+        <h4 class="fw-bold mb-1"><i class="fa-regular fa-comments text-brand me-2"></i>Hộp thư Khách hàng (Shop Inbox)</h4>
+        <p class="text-muted small mb-0">Trả lời tin nhắn và tư vấn khách hàng trực tuyến theo thời gian thực</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        @if (User.IsInRole("admin"))
+        {
+            <a asp-controller="Support" asp-action="AdminInbox" class="btn btn-brand btn-sm rounded-pill px-3 fw-bold text-nowrap">
+                <i class="fa-solid fa-headset me-1"></i> CSKH Toàn Sàn
+            </a>
+        }
+        <a asp-controller="Chat" asp-action="MyChats" class="btn btn-outline-secondary btn-sm rounded-pill px-3 text-nowrap">
+            <i class="fa-regular fa-message me-1"></i> Tin nhắn cá nhân
+        </a>
     </div>
 </div>
 
-<div class="row g-4">
-    <!-- CỘT TRÁI: DANH SÁCH HỘI THOẠI -->
-    <div class="col-md-5 col-lg-4">
-        <div class="bg-white rounded-4 shadow-sm p-3 h-100">
-            <h6 class="fw-bold mb-3 text-muted text-uppercase small">Danh sách khách hàng</h6>
+@if (User.IsInRole("restaurant_owner"))
+{
+    <!-- TABS NAVIGATION CỦA CHỦ QUÁN -->
+    <ul class="nav nav-pills fd-owner-tabs mb-4 bg-white p-2 rounded-4 shadow-sm">
+        <li class="nav-item">
+            <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="RestaurantOwner" asp-action="Orders">
+                <i class="fa-solid fa-receipt me-2"></i>Đơn hàng
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="RestaurantOwner" asp-action="Menu">
+                <i class="fa-solid fa-utensils me-2"></i>Thực đơn món ăn
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="RestaurantOwner" asp-action="Revenue">
+                <i class="fa-solid fa-chart-line me-2 text-success"></i>Doanh thu & Tài chính
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="Voucher" asp-action="Manage">
+                <i class="fa-solid fa-ticket me-2 text-warning"></i>Voucher quán
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link active bg-brand text-white fw-semibold px-3 py-2 rounded-3" asp-controller="Chat" asp-action="ShopInbox">
+                <i class="fa-regular fa-comments me-2"></i>Tin nhắn khách
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="RestaurantOwner" asp-action="Settings">
+                <i class="fa-solid fa-gear me-2"></i>Hồ sơ & Ảnh nhà hàng
+            </a>
+        </li>
+    </ul>
+}
 
-            <div class="list-group list-group-flush overflow-auto" style="max-height: 520px;" id="inboxCustomerList">
-                @if (!conversations.Any())
+<!-- GIAO DIỆN CHAT 2 CỘT CHUẨN MESSENGER / SHOPEE CHAT -->
+<div class="fd-chat-container mb-4">
+    <!-- CỘT TRÁI: DANH SÁCH HỘI THOẠI KHÁCH HÀNG -->
+    <div class="fd-chat-sidebar">
+        <div class="fd-chat-sidebar-head">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-bold text-muted text-uppercase" style="font-size:11px">Khách hàng nhắn tin (@conversations.Count)</span>
+                <span class="badge bg-success-subtle text-success border border-success rounded-pill" style="font-size:10px">
+                    <i class="fa-solid fa-bolt me-1"></i>Trực tuyến
+                </span>
+            </div>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light border-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                <input type="text" id="shopInboxSearch" class="form-control bg-light border-0" placeholder="Tìm tên khách hàng..." />
+            </div>
+        </div>
+
+        <div class="fd-chat-list" id="inboxCustomerList">
+            @if (!conversations.Any())
+            {
+                <div class="text-center py-5 text-muted small my-auto" id="emptyInboxPlaceholder">
+                    <i class="fa-regular fa-comment-dots fs-1 mb-2 opacity-50"></i>
+                    <p class="mb-0">Chưa có khách hàng nào gửi tin nhắn.</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var c in conversations)
                 {
-                    <div class="text-center py-5 text-muted small">
-                        <i class="fa-regular fa-comment-dots fs-1 mb-2 opacity-50"></i>
-                        <p class="mb-0">Chưa có khách hàng nào gửi tin nhắn.</p>
+                    <div class="fd-conv-card conversation-item"
+                         id="conv-@c.RestaurantId-@c.CustomerId"
+                         data-rest-id="@c.RestaurantId"
+                         data-cust-id="@c.CustomerId"
+                         data-cust-name="@c.CustomerName"
+                         data-rest-name="@c.RestaurantName">
+                        <div class="position-relative flex-shrink-0">
+                            <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(c.CustomerName)&background=14402E&color=fff"
+                                 class="rounded-circle shadow-xs" width="44" height="44" alt="avatar" />
+                            <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle p-1"></span>
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="fw-bold text-dark text-truncate small">@c.CustomerName</div>
+                                <div class="text-muted conv-time ms-1 flex-shrink-0" style="font-size: 11px;">@c.LastTime</div>
+                            </div>
+                            <div class="text-muted small text-truncate conv-preview @(c.UnreadCount > 0 ? "fw-bold text-dark" : "")" style="font-size: 12px;">
+                                @(c.LastSenderRole == "restaurant" ? "Bạn: " : "")@c.LastMessage
+                            </div>
+                            <div class="badge bg-white text-secondary border mt-1" style="font-size: 10px;">@c.RestaurantName</div>
+                        </div>
+                        @if (c.UnreadCount > 0)
+                        {
+                            <span class="badge bg-danger rounded-pill conv-unread">@c.UnreadCount</span>
+                        }
                     </div>
                 }
-                else
-                {
-                    @foreach (var c in conversations)
-                    {
-                        var cust = c.Customer;
-                        var rest = c.Restaurant;
-                        var lastMsg = c.LastMessage;
-                        int unread = c.UnreadCount;
-                        <a href="javascript:void(0)" class="list-group-item list-group-item-action p-3 rounded-3 mb-2 border conversation-item"
-                           onclick="loadShopConversation('@rest.Id', '@cust.Id', '@cust.FullName', '@rest.Name')">
-                            <div class="d-flex align-items-center gap-3">
-                                <img src="https://ui-avatars.com/api/?name=@cust.FullName&background=14402E&color=fff" 
-                                     class="rounded-circle shadow-xs" width="44" height="44" alt="avatar" />
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <div class="fw-bold text-dark text-truncate small">@cust.FullName</div>
-                                        <div class="text-muted" style="font-size: 11px;">@lastMsg?.CreatedAt.ToString("HH:mm")</div>
-                                    </div>
-                                    <div class="text-muted small text-truncate" style="font-size: 12px;">
-                                        @(lastMsg?.SenderRole == "restaurant" ? "Bạn: " : "")@lastMsg?.Message
-                                    </div>
-                                    <div class="badge bg-light text-secondary border mt-1" style="font-size: 10px;">@rest.Name</div>
-                                </div>
-                                @if (unread > 0)
-                                {
-                                    <span class="badge bg-danger rounded-pill">@unread</span>
-                                }
-                            </div>
-                        </a>
-                    }
-                }
-            </div>
+            }
         </div>
     </div>
 
     <!-- CỘT PHẢI: KHUNG CHAT TRỰC TIẾP -->
-    <div class="col-md-7 col-lg-8">
-        <div class="bg-white rounded-4 shadow-sm p-4 d-flex flex-column" style="height: 600px;">
-            <!-- Header chat -->
-            <div class="d-flex justify-content-between align-items-center pb-3 border-bottom mb-3" id="shopChatHeader">
-                <div class="d-flex align-items-center gap-3">
-                    <img id="shopChatAvatar" src="https://placehold.co/80x80?text=Customer" class="rounded-circle shadow-xs" width="42" height="42" />
-                    <div>
-                        <div class="fw-bold text-dark fs-6" id="shopChatTitle">Chọn một khách hàng để xem tin nhắn</div>
-                        <div class="text-muted small" id="shopChatSubtitle">Trực tuyến &bull; Phản hồi khách hàng nhanh</div>
-                    </div>
+    <div class="fd-chat-main">
+        <!-- Header chat -->
+        <div class="fd-chat-header" id="shopChatHeader">
+            <div class="d-flex align-items-center gap-2 gap-sm-3 min-w-0">
+                <button type="button" class="fd-chat-back-btn" onclick="closeMobileChatView()" title="Quay lại danh sách hộp thư">
+                    <i class="fa-solid fa-arrow-left"></i> <span>Hộp thư</span>
+                </button>
+                <div class="position-relative flex-shrink-0">
+                    <img id="shopChatAvatar" src="https://ui-avatars.com/api/?name=KH&background=14402E&color=fff" class="rounded-circle border" width="42" height="42" />
+                    <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle p-1"></span>
+                </div>
+                <div class="min-w-0">
+                    <div class="fw-bold text-dark text-truncate" id="shopChatTitle">Chọn một khách hàng để xem tin nhắn</div>
+                    <div class="text-muted small text-truncate" id="shopChatSubtitle">Trực tuyến &bull; Phản hồi khách hàng nhanh</div>
                 </div>
             </div>
+        </div>
 
-            <!-- Vùng hiển thị tin nhắn -->
-            <div class="flex-grow-1 overflow-auto p-3 bg-light rounded-3 mb-3 d-flex flex-column gap-2" id="shopChatMessages">
-                <div class="text-center py-5 text-muted small my-auto">
-                    <i class="fa-solid fa-comments fs-1 mb-2 opacity-50"></i>
-                    <p class="mb-0">Vui lòng chọn khách hàng ở cột bên trái để bắt đầu trò chuyện.</p>
-                </div>
+        <!-- Vùng hiển thị tin nhắn -->
+        <div class="fd-chat-body" id="shopChatMessages">
+            <div class="text-center py-5 text-muted small my-auto">
+                <i class="fa-regular fa-comments fs-1 mb-2 text-brand opacity-50"></i>
+                <p class="mb-0">Chọn khách hàng ở danh sách bên trái để bắt đầu trò chuyện.</p>
             </div>
+        </div>
 
-            <!-- Khung soạn tin nhắn -->
-            <div class="pt-2">
-                <div class="input-group">
-                    <input type="text" id="shopChatInput" class="form-control rounded-start-pill border py-2 px-3" 
-                           placeholder="Nhập câu trả lời cho khách hàng..." disabled />
-                    <button type="button" id="shopChatSendBtn" class="btn btn-brand rounded-end-pill px-4 fw-bold" disabled>
-                        <i class="fa-solid fa-paper-plane me-1"></i> Gửi
-                    </button>
-                </div>
+        <!-- Câu trả lời nhanh cho chủ quán (Gọn gàng trên cả PC & Điện thoại) -->
+        <div class="fd-chat-chips">
+            <span class="fd-chat-chip shop-quick-reply" data-msg="Dạ quán đang chuẩn bị món cho bạn rồi ạ!">❤️ Đang chuẩn bị món</span>
+            <span class="fd-chat-chip shop-quick-reply" data-msg="Dạ món này quán vẫn còn phục vụ bạn nhé!">🍜 Món vẫn còn</span>
+            <span class="fd-chat-chip shop-quick-reply" data-msg="Bạn áp mã FREESHIP30K hoặc FOODIE50K lúc thanh toán nhé!">🎟️ Gợi ý mã giảm giá</span>
+        </div>
+
+        <!-- Khung soạn tin nhắn -->
+        <div class="fd-chat-footer">
+            <div class="fd-chat-input-wrap">
+                <input type="text" id="shopChatInput" placeholder="Nhập câu trả lời cho khách hàng..." disabled />
+                <button type="button" id="shopChatSendBtn" class="fd-chat-send-btn" disabled>
+                    <i class="fa-solid fa-paper-plane"></i> <span>Gửi</span>
+                </button>
             </div>
         </div>
     </div>
@@ -101,33 +172,121 @@
     <script>
         let currentRestId = null;
         let currentCustId = null;
+        let currentCustAvatar = "https://ui-avatars.com/api/?name=KH&background=14402E&color=fff";
+        const pendingOwn = [];
 
         const chatHub = new signalR.HubConnectionBuilder()
             .withUrl("/chatHub")
             .withAutomaticReconnect()
             .build();
 
-        chatHub.start();
+        chatHub.onreconnected(function () {
+            chatHub.invoke("JoinShopInbox").catch(() => {});
+            if (currentRestId && currentCustId) {
+                chatHub.invoke("JoinChatRoom", currentRestId.toString(), currentCustId.toString()).catch(() => {});
+            }
+        });
 
         chatHub.on("ReceiveMessage", function (role, senderName, text, time) {
+            if (role === 'restaurant') {
+                const i = pendingOwn.indexOf(text);
+                if (i !== -1) { pendingOwn.splice(i, 1); return; }
+            }
             appendMessage(role === 'restaurant', senderName, text, time);
         });
 
-        function loadShopConversation(restId, custId, custName, restName) {
+        chatHub.on("ShopInboxUpdated", function (data) {
+            if (!data) return;
+            const list = document.getElementById('inboxCustomerList');
+            const empty = document.getElementById('emptyInboxPlaceholder');
+            if (empty) empty.remove();
+
+            const itemId = `conv-${data.restaurantId}-${data.customerId}`;
+            let item = document.getElementById(itemId);
+            const isCurrentActive = (String(currentRestId) === String(data.restaurantId) && String(currentCustId) === String(data.customerId));
+            const previewPrefix = data.senderRole === 'restaurant' ? 'Bạn: ' : '';
+
+            if (!item) {
+                item = document.createElement('div');
+                item.id = itemId;
+                item.className = 'fd-conv-card conversation-item';
+                item.dataset.restId = data.restaurantId;
+                item.dataset.custId = data.customerId;
+                item.dataset.custName = data.customerName;
+                item.dataset.restName = data.restaurantName;
+                item.innerHTML = `
+                    <div class="position-relative flex-shrink-0">
+                        <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(data.customerName)}&background=14402E&color=fff"
+                             class="rounded-circle shadow-xs" width="44" height="44" alt="avatar" />
+                        <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle p-1"></span>
+                    </div>
+                    <div class="flex-grow-1 overflow-hidden">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="fw-bold text-dark text-truncate small">${escapeHtml(data.customerName)}</div>
+                            <div class="text-muted conv-time ms-1 flex-shrink-0" style="font-size: 11px;">${escapeHtml(data.time)}</div>
+                        </div>
+                        <div class="text-muted small text-truncate conv-preview" style="font-size: 12px;">
+                            ${escapeHtml(previewPrefix + data.message)}
+                        </div>
+                        <div class="badge bg-white text-secondary border mt-1" style="font-size: 10px;">${escapeHtml(data.restaurantName)}</div>
+                    </div>
+                    ${(!isCurrentActive && data.senderRole === 'customer') ? '<span class="badge bg-danger rounded-pill conv-unread">1</span>' : ''}
+                `;
+                bindConversationClick(item);
+                list.prepend(item);
+            } else {
+                const timeEl = item.querySelector('.conv-time');
+                const prevEl = item.querySelector('.conv-preview');
+                if (timeEl) timeEl.textContent = data.time;
+                if (prevEl) prevEl.textContent = previewPrefix + data.message;
+
+                if (!isCurrentActive && data.senderRole === 'customer') {
+                    let badge = item.querySelector('.conv-unread');
+                    if (badge) {
+                        badge.textContent = (parseInt(badge.textContent || '0') + 1).toString();
+                    } else {
+                        const span = document.createElement('span');
+                        span.className = 'badge bg-danger rounded-pill conv-unread';
+                        span.textContent = '1';
+                        item.appendChild(span);
+                    }
+                }
+                list.prepend(item);
+            }
+        });
+
+        chatHub.start()
+            .then(() => chatHub.invoke("JoinShopInbox"))
+            .catch(err => console.error('Không kết nối được chat realtime:', err));
+
+        function nowTime() {
+            return new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+        }
+
+        async function loadShopConversation(restId, custId, custName, restName) {
+            if (currentRestId && currentCustId) {
+                await chatHub.invoke("LeaveChatRoom", currentRestId.toString(), currentCustId.toString()).catch(() => {});
+            }
+
             currentRestId = restId;
             currentCustId = custId;
+            currentCustAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(custName)}&background=14402E&color=fff`;
+            pendingOwn.length = 0;
 
             document.getElementById('shopChatTitle').innerText = custName;
             document.getElementById('shopChatSubtitle').innerText = 'Khách của quán: ' + restName;
-            document.getElementById('shopChatAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(custName)}&background=14402E&color=fff`;
+            document.getElementById('shopChatAvatar').src = currentCustAvatar;
 
             document.getElementById('shopChatInput').disabled = false;
             document.getElementById('shopChatSendBtn').disabled = false;
 
-            chatHub.invoke("JoinChatRoom", restId.toString(), custId.toString()).catch(() => {});
+            if (chatHub.state === signalR.HubConnectionState.Connected) {
+                await chatHub.invoke("JoinChatRoom", restId.toString(), custId.toString()).catch(err => console.error(err));
+            }
 
-            // Tải lịch sử tin nhắn
-            fetch(`/Chat/GetMessages?restaurantId=${restId}&customerId=${custId}`)
+            fetch(`/Chat/GetMessages?restaurantId=${restId}&customerId=${custId}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
                 .then(res => res.json())
                 .then(data => {
                     const box = document.getElementById('shopChatMessages');
@@ -137,54 +296,132 @@
                             appendMessage(m.isMe, m.senderName, m.message, m.time);
                         });
                     } else {
-                        box.innerHTML = '<div class="text-center text-muted small my-auto">Chưa có tin nhắn nào trong cuộc trò chuyện này.</div>';
+                        box.innerHTML = '<div class="chat-empty text-center text-muted small my-auto">Chưa có tin nhắn nào trong cuộc trò chuyện này.</div>';
                     }
                     box.scrollTop = box.scrollHeight;
+                    if (typeof updateChatBadge === 'function') updateChatBadge();
                 });
         }
 
         function appendMessage(isMe, senderName, text, time) {
             const box = document.getElementById('shopChatMessages');
-            const div = document.createElement('div');
-            div.className = isMe ? 'd-flex justify-content-end mb-2' : 'd-flex justify-content-start mb-2';
+            const empty = box.querySelector('.chat-empty');
+            if (empty) empty.remove();
 
-            const bgClass = isMe ? 'bg-brand text-white' : 'bg-white text-dark border';
-            div.innerHTML = `
-                <div class="rounded-4 p-3 shadow-xs ${bgClass}" style="max-width: 75%;">
-                    <div class="fw-bold mb-1" style="font-size:11px; opacity: 0.85;">${senderName}</div>
-                    <div class="small mb-1">${escapeHtml(text)}</div>
-                    <div class="text-end" style="font-size:10px; opacity: 0.75;">${time}</div>
+            const row = document.createElement('div');
+            row.className = `fd-msg-row ${isMe ? 'is-me' : 'is-other'}`;
+
+            row.innerHTML = `
+                ${!isMe ? `<img src="${currentCustAvatar}" class="fd-msg-avatar" alt="avatar" />` : ''}
+                <div class="fd-msg-bubble">
+                    ${!isMe ? `<div class="fd-msg-sender">${escapeHtml(senderName)}</div>` : ''}
+                    <div>${escapeHtml(text)}</div>
+                    <div class="fd-msg-time">${time}</div>
                 </div>
             `;
-            box.appendChild(div);
+            box.appendChild(row);
             box.scrollTop = box.scrollHeight;
+            return row;
         }
 
-        function sendShopMessage() {
+        function sendShopMessage(customText) {
             const input = document.getElementById('shopChatInput');
-            const text = input.value.trim();
+            const text = (customText || input.value).trim();
             if (!text || !currentRestId || !currentCustId) return;
 
-            input.value = '';
+            if (!customText) input.value = '';
+
+            pendingOwn.push(text);
+            const bubble = appendMessage(true, 'Quán phản hồi', text, nowTime());
 
             fetch('/Chat/SendMessage', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
                 body: `restaurantId=${currentRestId}&customerId=${currentCustId}&message=${encodeURIComponent(text)}`
+            })
+            .then(r => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(d => {
+                if (!d.success) throw new Error(d.message || 'Gửi tin thất bại');
+            })
+            .catch(err => {
+                const i = pendingOwn.indexOf(text);
+                if (i !== -1) pendingOwn.splice(i, 1);
+                bubble.remove();
+                alert('Không gửi được tin nhắn: ' + err.message);
             });
         }
 
-        document.getElementById('shopChatSendBtn').addEventListener('click', sendShopMessage);
+        function closeMobileChatView() {
+            const container = document.querySelector('.fd-chat-container');
+            if (container) container.classList.remove('mobile-chat-open');
+        }
+
+        function bindConversationClick(item) {
+            item.addEventListener('click', function () {
+                document.querySelectorAll('.conversation-item').forEach(x => x.classList.remove('active'));
+                item.classList.add('active');
+
+                const badge = item.querySelector('.conv-unread');
+                if (badge) badge.remove();
+
+                const container = document.querySelector('.fd-chat-container');
+                if (container) container.classList.add('mobile-chat-open');
+
+                loadShopConversation(item.dataset.restId, item.dataset.custId, item.dataset.custName, item.dataset.restName);
+            });
+        }
+
+        document.querySelectorAll('.conversation-item').forEach(bindConversationClick);
+
+        document.getElementById('shopChatSendBtn').addEventListener('click', () => sendShopMessage());
         document.getElementById('shopChatInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 sendShopMessage();
             }
         });
 
+        document.querySelectorAll('.shop-quick-reply').forEach(pill => {
+            pill.addEventListener('click', function() {
+                if (!currentRestId || !currentCustId) {
+                    alert('Vui lòng chọn một khách hàng ở cột bên trái trước!');
+                    return;
+                }
+                sendShopMessage(this.dataset.msg || this.innerText.replace(/^[^\wÀ-ỹ]+/, '').trim());
+            });
+        });
+
+        document.getElementById('shopInboxSearch').addEventListener('input', function() {
+            const q = this.value.toLowerCase().trim();
+            document.querySelectorAll('.conversation-item').forEach(el => {
+                const n = (el.dataset.custName || '').toLowerCase();
+                el.style.display = n.includes(q) ? '' : 'none';
+            });
+        });
+
         function escapeHtml(text) {
             const d = document.createElement('div');
-            d.innerText = text;
+            d.innerText = text == null ? '' : text;
             return d.innerHTML;
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const initR = "@(initRestId?.ToString() ?? "")";
+            const initC = "@(initCustId?.ToString() ?? "")";
+            if (initR && initC) {
+                const target = document.getElementById(`conv-${initR}-${initC}`);
+                if (target) { target.click(); return; }
+            }
+            // Trên máy tính (>= 992px) tự mở cuộc hội thoại đầu tiên; trên điện thoại hiện danh sách Hộp thư trước
+            if (window.innerWidth >= 992) {
+                const firstItem = document.querySelector('.conversation-item');
+                if (firstItem) firstItem.click();
+            }
+        });
     </script>
 }

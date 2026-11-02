@@ -1,0 +1,348 @@
+@model baitaplontmdtwebdatdoan.Models.AdminRevenueViewModel
+@{
+    ViewData["Title"] = "Báo cáo Doanh thu Sàn & Trung gian Thanh toán (Admin)";
+    var allRestaurants = ViewBag.AllRestaurants as List<baitaplontmdtwebdatdoan.Models.Restaurant> ?? new List<baitaplontmdtwebdatdoan.Models.Restaurant>();
+    var selectedRestId = ViewBag.SelectedRestaurantId as long?;
+    string currentPeriod = Model.Period;
+
+    string GetPaymentName(string method) => method switch
+    {
+        "cod" => "Tiền mặt (COD)",
+        "bank_transfer" => "VietQR 24/7",
+        "wallet" => "Ví FoodiePay",
+        "credit_card" => "Thẻ Visa/Master",
+        "momo" => "Ví MoMo",
+        "zalopay" => "Ví ZaloPay",
+        _ => method
+    };
+}
+
+<!-- HEADER & ĐIỀU HƯỚNG ADMIN -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h4 class="fw-bold mb-0"><i class="fa-solid fa-sack-dollar text-success me-2"></i>DOANH THU SÀN & TRUNG GIAN THANH TOÁN (ADMIN)</h4>
+            <span class="badge bg-success text-white rounded-pill px-3 py-1 small">Foodie Platform Finance</span>
+        </div>
+        <p class="text-muted small mb-0">
+            Thống kê toàn diện dòng tiền GMV, chiết khấu hoa hồng sàn thu về (18%), phí cổng trung gian thanh toán (1.5%) và quyết toán cho các đối tác Nhà hàng
+        </p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold">
+            <i class="fa-solid fa-store me-1"></i> Duyệt Nhà hàng
+        </a>
+        <a asp-controller="Voucher" asp-action="Manage" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold">
+            <i class="fa-solid fa-ticket me-1"></i> Quản lý Voucher
+        </a>
+        <a asp-controller="Support" asp-action="AdminInbox" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-semibold">
+            <i class="fa-solid fa-headset me-1"></i> CSKH Trực tuyến
+        </a>
+        <button type="button" class="btn btn-dark btn-sm rounded-pill px-3 fw-semibold" onclick="window.print()">
+            <i class="fa-solid fa-print me-1"></i> In báo cáo
+        </button>
+    </div>
+</div>
+
+<!-- THANH LỌC THỜI GIAN & LỌC THEO NHÀ HÀNG -->
+<div class="bg-white rounded-4 p-3 shadow-sm mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="text-muted small fw-semibold"><i class="fa-regular fa-calendar-days me-1"></i> Kỳ báo cáo:</span>
+        <div class="btn-group btn-group-sm" role="group">
+            <a asp-action="Revenue" asp-route-period="today" asp-route-restaurantId="@selectedRestId" class="btn @(currentPeriod == "today" ? "btn-brand fw-bold" : "btn-outline-secondary") px-3">Hôm nay</a>
+            <a asp-action="Revenue" asp-route-period="7days" asp-route-restaurantId="@selectedRestId" class="btn @(currentPeriod == "7days" ? "btn-brand fw-bold" : "btn-outline-secondary") px-3">7 ngày qua</a>
+            <a asp-action="Revenue" asp-route-period="30days" asp-route-restaurantId="@selectedRestId" class="btn @(currentPeriod == "30days" ? "btn-brand fw-bold" : "btn-outline-secondary") px-3">30 ngày qua</a>
+            <a asp-action="Revenue" asp-route-period="all" asp-route-restaurantId="@selectedRestId" class="btn @(currentPeriod == "all" ? "btn-brand fw-bold" : "btn-outline-secondary") px-3">Toàn bộ</a>
+        </div>
+    </div>
+
+    <form method="get" asp-action="Revenue" class="d-flex align-items-center gap-2">
+        <input type="hidden" name="period" value="@currentPeriod" />
+        <span class="text-muted small fw-semibold">Nhà hàng:</span>
+        <select name="restaurantId" class="form-select form-select-sm rounded-3" style="min-width: 210px;" onchange="this.form.submit()">
+            <option value="">-- Tất cả nhà hàng trên sàn --</option>
+            @foreach (var r in allRestaurants)
+            {
+                <option value="@r.Id" selected="@(selectedRestId == r.Id ? "selected" : null)">@r.Name</option>
+            }
+        </select>
+    </form>
+</div>
+
+<!-- KHỐI KPI TÀI CHÍNH DÀNH CHO ADMIN -->
+<div class="row g-3 mb-4">
+    <!-- 1. DOANH THU RÒNG CỦA SÀN (HERO CARD) -->
+    <div class="col-12 col-xl-4">
+        <div class="rounded-4 p-4 shadow-sm h-100 text-white position-relative overflow-hidden"
+             style="background: linear-gradient(135deg, #14402E 0%, #059669 100%);">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <span class="badge bg-warning text-dark fw-bold px-2 py-1 rounded-pill mb-2">
+                        <i class="fa-solid fa-crown me-1"></i>Doanh thu thuần của Admin/Sàn
+                    </span>
+                    <div class="text-white-50 small">Hoa hồng chiết khấu (18%) + Phí cổng TT (1.5%)</div>
+                </div>
+                <div class="p-3 bg-white bg-opacity-25 rounded-circle">
+                    <i class="fa-solid fa-vault fs-3"></i>
+                </div>
+            </div>
+            <div class="display-6 fw-bold my-2">
+                +@Model.TotalPlatformNetRevenue.ToString("N0") <span class="fs-4">₫</span>
+            </div>
+            <div class="d-flex justify-content-between small pt-2 border-top border-white border-opacity-25 text-white-50">
+                <span>Hoa hồng (18%): <strong class="text-white">@Model.TotalPlatformCommission.ToString("N0")₫</strong></span>
+                <span>Phí cổng (1.5%): <strong class="text-white">@Model.TotalPaymentGatewayFee.ToString("N0")₫</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. TỔNG GMV TOÀN SÀN -->
+    <div class="col-6 col-xl-2">
+        <div class="bg-white rounded-4 p-3 shadow-sm h-100 border-start border-4 border-primary d-flex flex-column justify-content-between">
+            <div>
+                <div class="text-muted small fw-semibold mb-1">Tổng GMV toàn sàn</div>
+                <div class="fs-4 fw-bold text-dark">@Model.TotalGMV.ToString("N0") ₫</div>
+            </div>
+            <div class="text-muted small pt-2 border-top">
+                Tiền món: <strong>@Model.TotalGrossFoodSales.ToString("N0")₫</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. TIỀN GIẢI NGÂN CHO CÁC QUÁN -->
+    <div class="col-6 col-xl-2">
+        <div class="bg-white rounded-4 p-3 shadow-sm h-100 border-start border-4 border-success d-flex flex-column justify-content-between">
+            <div>
+                <div class="text-muted small fw-semibold mb-1">Giải ngân cho Quán</div>
+                <div class="fs-4 fw-bold text-success">@Model.TotalMerchantPayout.ToString("N0") ₫</div>
+            </div>
+            <div class="text-muted small pt-2 border-top">
+                80.5% doanh thu món về Ví Quán
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. QUỸ TRUNG GIAN THANH TOÁN ĐANG GIỮ (ESCROW HOLDING) -->
+    <div class="col-6 col-xl-2">
+        <div class="bg-white rounded-4 p-3 shadow-sm h-100 border-start border-4 border-warning d-flex flex-column justify-content-between">
+            <div>
+                <div class="text-muted small fw-semibold mb-1">Đang giữ Trung gian</div>
+                <div class="fs-4 fw-bold text-warning-emphasis">@Model.EscrowHoldingAmount.ToString("N0") ₫</div>
+            </div>
+            <div class="text-muted small pt-2 border-top">
+                @Model.EscrowHoldingCount đơn đang giao (Escrow)
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. TỔNG ĐƠN & KHUYẾN MÃI VOUCHER -->
+    <div class="col-6 col-xl-2">
+        <div class="bg-white rounded-4 p-3 shadow-sm h-100 border-start border-4 border-danger d-flex flex-column justify-content-between">
+            <div>
+                <div class="text-muted small fw-semibold mb-1">Đơn hoàn thành</div>
+                <div class="fs-4 fw-bold text-danger">@Model.CompletedOrderCount đơn</div>
+            </div>
+            <div class="text-muted small pt-2 border-top">
+                Tài trợ Voucher: -@Model.TotalVoucherDiscount.ToString("N0")₫
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BIỂU ĐỒ DOANH THU SÀN & TOP NHÀ HÀNG -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="bg-white rounded-4 p-4 shadow-sm h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h6 class="fw-bold mb-1"><i class="fa-solid fa-chart-column text-brand me-2"></i>Biểu đồ Doanh thu Gộp (GMV) & Lợi nhuận Sàn Admin theo ngày</h6>
+                    <span class="text-muted small">Theo dõi tăng trưởng doanh thu sàn thu về qua từng ngày</span>
+                </div>
+            </div>
+            <div style="height: 320px;">
+                <canvas id="adminRevenueChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="bg-white rounded-4 p-4 shadow-sm h-100">
+            <h6 class="fw-bold mb-3"><i class="fa-solid fa-ranking-star text-warning me-2"></i>Top Nhà hàng đóng góp hoa hồng cao nhất</h6>
+            <div class="d-flex flex-column gap-3 overflow-auto" style="max-height: 310px;">
+                @foreach (var r in Model.RestaurantBreakdowns)
+                {
+                    <div class="p-3 rounded-3 bg-light border d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-bold text-dark small">@r.RestaurantName</div>
+                            <div class="text-muted" style="font-size:11px">
+                                @r.CompletedOrders đơn hoàn thành &bull; Bán gộp: @r.GrossSales.ToString("N0")₫
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold text-success small">+@r.PlatformEarned.ToString("N0")₫</div>
+                            <div class="text-muted" style="font-size:10px">Thu về Sàn (19.5%)</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BẢNG 1: ĐỐI SOÁT DOANH THU THEO TỪNG ĐỐI TÁC NHÀ HÀNG -->
+<div class="bg-white rounded-4 p-4 shadow-sm mb-4">
+    <h5 class="fw-bold mb-3"><i class="fa-solid fa-store text-brand me-2"></i>Bảng đối soát doanh thu & chiết khấu theo từng Nhà hàng</h5>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small text-muted text-uppercase">
+                <tr>
+                    <th>Nhà hàng</th>
+                    <th class="text-center">Số đơn hoàn tất</th>
+                    <th class="text-end">Doanh thu món (100%)</th>
+                    <th class="text-end text-success">Hoa hồng Admin thu (18%)</th>
+                    <th class="text-end text-primary">Phí Cổng TT (1.5%)</th>
+                    <th class="text-end fw-bold text-success">Tổng Sàn thu (19.5%)</th>
+                    <th class="text-end">Giải ngân về Quán (80.5%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var rb in Model.RestaurantBreakdowns)
+                {
+                    <tr>
+                        <td class="fw-bold text-dark">@rb.RestaurantName</td>
+                        <td class="text-center"><span class="badge bg-light text-dark border">@rb.CompletedOrders đơn</span></td>
+                        <td class="text-end fw-semibold">@rb.GrossSales.ToString("N0") ₫</td>
+                        <td class="text-end text-success">+@rb.CommissionFee.ToString("N0") ₫</td>
+                        <td class="text-end text-primary">+@rb.PaymentFee.ToString("N0") ₫</td>
+                        <td class="text-end fw-bold text-success">+@rb.PlatformEarned.ToString("N0") ₫</td>
+                        <td class="text-end fw-semibold text-secondary">@rb.MerchantNetPayout.ToString("N0") ₫</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- BẢNG 2: SAO KÊ GIAO DỊCH TRUNG GIAN THANH TOÁN (ESCROW) TỪNG ĐƠN HÀNG -->
+<div class="bg-white rounded-4 p-4 shadow-sm mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <div>
+            <h5 class="fw-bold mb-1"><i class="fa-solid fa-shield-halved text-success me-2"></i>Sao kê Giao dịch Trung gian Thanh toán (Escrow) & Hoa hồng từng đơn</h5>
+            <span class="text-muted small">Kiểm soát trạng thái giữ tiền trung gian, giải ngân cho quán và hoàn tiền cho khách</span>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small text-muted text-uppercase">
+                <tr>
+                    <th>Mã đơn</th>
+                    <th>Nhà hàng / Khách</th>
+                    <th>Phương thức / Mã GD</th>
+                    <th class="text-center">Trạng thái Trung gian (Escrow)</th>
+                    <th class="text-end">Tiền món</th>
+                    <th class="text-end text-success">Sàn thu (19.5%)</th>
+                    <th class="text-end">Quán nhận (80.5%)</th>
+                    <th class="text-center">Chi tiết</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.OrderSettlements)
+                {
+                    <tr>
+                        <td class="fw-bold font-monospace">#@item.OrderCode</td>
+                        <td>
+                            <div class="fw-semibold text-dark small">@item.RestaurantName</div>
+                            <div class="text-muted" style="font-size:11px">Khách: @item.CustomerName &bull; @item.CreatedAt.ToString("dd/MM HH:mm")</div>
+                        </td>
+                        <td>
+                            <div class="small fw-semibold">@GetPaymentName(item.PaymentMethod)</div>
+                            @if (!string.IsNullOrEmpty(item.TransactionId))
+                            {
+                                <div class="text-muted font-monospace" style="font-size:10px">@item.TransactionId</div>
+                            }
+                        </td>
+                        <td class="text-center">
+                            @if (item.EscrowStatus == "settled")
+                            {
+                                <span class="badge bg-success-subtle text-success border border-success rounded-pill small">
+                                    <i class="fa-solid fa-check-double me-1"></i>Đã giải ngân cho Quán
+                                </span>
+                            }
+                            else if (item.EscrowStatus == "escrow_held")
+                            {
+                                <span class="badge bg-primary-subtle text-primary border border-primary rounded-pill small">
+                                    <i class="fa-solid fa-vault me-1"></i>Sàn đang giữ tiền (Escrow)
+                                </span>
+                            }
+                            else if (item.EscrowStatus == "refunded")
+                            {
+                                <span class="badge bg-info-subtle text-info-emphasis border border-info rounded-pill small">
+                                    <i class="fa-solid fa-rotate-left me-1"></i>Đã hoàn tiền cho Khách
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-light text-muted border rounded-pill small">
+                                    Chờ thu (@item.OrderStatus)
+                                </span>
+                            }
+                        </td>
+                        <td class="text-end fw-semibold">@item.Subtotal.ToString("N0") ₫</td>
+                        <td class="text-end fw-bold text-success">+@item.PlatformRevenue.ToString("N0") ₫</td>
+                        <td class="text-end text-dark">@item.MerchantNetAmount.ToString("N0") ₫</td>
+                        <td class="text-center">
+                            <a asp-controller="Order" asp-action="Details" asp-route-id="@item.OrderId" class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-1">
+                                <i class="fa-solid fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const stats = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DailyStats));
+            const labels = stats.map(x => x.DateLabel);
+            const grossData = stats.map(x => x.GrossSales);
+            const platformData = stats.map(x => x.PlatformRevenue);
+
+            const ctx = document.getElementById('adminRevenueChart');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Tổng tiền món bán ra (₫)',
+                                data: grossData,
+                                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                                borderRadius: 6
+                            },
+                            {
+                                label: 'Doanh thu Sàn Admin thu về 19.5% (₫)',
+                                data: platformData,
+                                backgroundColor: 'rgba(5, 150, 105, 0.9)',
+                                borderRadius: 6
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+}
+

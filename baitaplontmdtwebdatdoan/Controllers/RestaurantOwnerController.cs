@@ -257,18 +257,53 @@ namespace baitaplontmdtwebdatdoan.Controllers
             var restaurant = await _context.Restaurants.FirstOrDefaultAsync(r => r.OwnerId == CurrentUserId);
             if (restaurant == null) return Forbid();
 
-            var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == id && o.RestaurantId == restaurant.Id);
+            var order = await _context.Orders
+                .Include(o => o.Payments)
+                .FirstOrDefaultAsync(o => o.Id == id && o.RestaurantId == restaurant.Id);
             if (order == null) return NotFound();
 
             order.OrderStatus = newStatus;
             order.UpdatedAt = DateTime.UtcNow;
+
+            string extraEscrowNote = "";
+            if (newStatus == "completed")
+            {
+                order.PaymentStatus = "paid";
+                var comm = Math.Round(order.Subtotal * 0.18m, 0);
+                var payFee = Math.Round(order.Subtotal * 0.015m, 0);
+                var merchantNet = Math.Max(0, order.Subtotal - comm - payFee);
+
+                foreach (var p in order.Payments)
+                {
+                    p.Status = "settled";
+                }
+
+                var ownerWallet = await _context.Wallets.FindAsync(restaurant.OwnerId);
+                if (ownerWallet == null)
+                {
+                    ownerWallet = new Wallet { UserId = restaurant.OwnerId, Balance = 0 };
+                    _context.Wallets.Add(ownerWallet);
+                }
+                ownerWallet.Balance += merchantNet;
+
+                _context.WalletTransactions.Add(new WalletTransaction
+                {
+                    UserId = restaurant.OwnerId,
+                    Type = "escrow_settlement",
+                    Amount = merchantNet,
+                    ReferenceOrderId = order.Id,
+                    CreatedAt = DateTime.UtcNow
+                });
+
+                extraEscrowNote = $" — Trung gian Foodie Escrow đã quyết toán +{merchantNet:N0}đ vào Ví Quán (Hoa hồng & phí sàn 19.5%: {(comm + payFee):N0}đ)";
+            }
 
             _context.OrderStatusHistories.Add(new OrderStatusHistory
             {
                 OrderId = order.Id,
                 Status = newStatus,
                 ChangedAt = DateTime.UtcNow,
-                Note = "Nhà hàng cập nhật trạng thái"
+                Note = "Nhà hàng cập nhật trạng thái: " + GetStatusLabel(newStatus) + extraEscrowNote
             });
 
             await _context.SaveChangesAsync();
@@ -720,7 +755,7 @@ namespace baitaplontmdtwebdatdoan.Controllers
         // POST /RestaurantOwner/RequestPayout - Yêu cầu rút tiền về tài khoản ngân hàng
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RequestPayout(decimal amount, string bankName, string accountNumber, string accountHolder)
+        public IActionResult RequestPayout(decimal amount, string bankName, string accountNumber, string accountHolder)
         {
             if (amount <= 0 || string.IsNullOrWhiteSpace(accountNumber))
             {

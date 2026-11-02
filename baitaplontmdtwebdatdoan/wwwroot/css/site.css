@@ -615,9 +615,12 @@ i.text-brand, .fa-solid.text-brand, .fa-regular.text-brand { color: var(--brand)
     display: flex;
     gap: .5rem;
     overflow-x: auto;
-    padding: .15rem .15rem 1rem;
+    padding: .15rem .15rem .5rem;
     margin: 0 -.15rem 1.25rem;
-    scrollbar-width: thin;
+    scrollbar-width: none;
+}
+.fd-cats::-webkit-scrollbar {
+    display: none;
 }
 .fd-cat { flex: 0 0 auto; width: 88px; text-align: center; color: var(--ink); }
 .fd-cat:hover { color: var(--ink); }
@@ -728,22 +731,389 @@ i.text-brand, .fa-solid.text-brand, .fa-regular.text-brand { color: var(--brand)
 }
 
 /* =====================================================================
-   11. MÀN HÌNH NHỎ
+   11. MÀN HÌNH NHỎ & THANH MENU TRƯỢT BÊN TRÁI (OFFCANVAS CHUẨN WEB)
    ===================================================================== */
+.fd-hamburger {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    display: grid;
+    place-items: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    transition: background-color .15s ease, border-color .15s ease;
+}
+.fd-hamburger:hover,
+.fd-hamburger:active {
+    background: var(--chip);
+    border-color: var(--leaf-600);
+}
+
+.fd-offcanvas {
+    width: 285px !important;
+    background: var(--paper);
+    border-right: 1px solid var(--line);
+}
+.fd-offcanvas .offcanvas-header {
+    background: #fff;
+}
+.fd-offcanvas .fd-navlink {
+    background: #fff;
+    padding: .7rem .9rem;
+    border-radius: 12px;
+    box-shadow: 0 0 0 1px var(--line);
+    margin-bottom: .15rem;
+}
+.fd-offcanvas .fd-navlink.active {
+    background: var(--leaf);
+    color: #fff;
+    box-shadow: none;
+}
+
+/* Thanh tab chủ quán / quản trị thân thiện trên cả PC & Điện thoại */
+.fd-owner-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+    width: 100% !important;
+}
+.fd-owner-tabs .nav-item {
+    flex: 1 1 auto;
+}
+.fd-owner-tabs .nav-link {
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* =====================================================================
+   12. GIAO DIỆN NHẮN TIN CHUẨN MESSENGER / ZALO / SHOPEE CHAT
+   ===================================================================== */
+.min-w-0 {
+    min-width: 0 !important;
+}
+
+.fd-chat-container {
+    background: #fff;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+    box-shadow: 0 8px 30px rgba(20, 40, 30, .06);
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    height: 620px;
+    width: 100%;
+    max-width: 100%;
+}
+
+.fd-chat-sidebar {
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    background: #FAFBF9;
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+}
+
+.fd-chat-sidebar-head {
+    padding: 1rem;
+    border-bottom: 1px solid var(--line);
+    background: #fff;
+    flex-shrink: 0;
+}
+
+.fd-chat-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: .6rem;
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+}
+
+.fd-conv-card {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .75rem .85rem;
+    border-radius: 14px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--ink);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color .15s ease, border-color .15s ease, transform .1s ease;
+}
+.fd-conv-card:hover {
+    background: #fff;
+    border-color: var(--line);
+    color: var(--ink);
+}
+.fd-conv-card.active,
+.list-group-item.conversation-item.active,
+.list-group-item.support-conv-item.active {
+    background: var(--leaf-tint) !important;
+    border-color: #B4D4C2 !important;
+    border-left: 4px solid var(--leaf) !important;
+    color: var(--ink) !important;
+}
+
+.fd-chat-main {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.fd-chat-header {
+    padding: .75rem 1rem;
+    border-bottom: 1px solid var(--line);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    flex-shrink: 0;
+    min-width: 0;
+    width: 100%;
+}
+
+.fd-chat-body,
+.fd-chat-messages {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1rem;
+    background: #F4F6F3;
+    display: flex;
+    flex-direction: column;
+    gap: .65rem;
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+}
+
+.fd-msg-row {
+    display: flex;
+    align-items: flex-end;
+    gap: .5rem;
+    max-width: 82%;
+    min-width: 0;
+}
+.fd-msg-row.is-me,
+.fd-msg-row.me {
+    align-self: flex-end;
+    margin-left: auto;
+    flex-direction: row-reverse;
+}
+.fd-msg-row.is-other,
+.fd-msg-row.other {
+    align-self: flex-start;
+    margin-right: auto;
+}
+
+.fd-msg-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid var(--line);
+    background: #fff;
+}
+
+.fd-msg-bubble {
+    padding: .65rem .95rem;
+    font-size: .9rem;
+    line-height: 1.45;
+    word-break: break-word;
+    position: relative;
+}
+.fd-msg-row.is-me .fd-msg-bubble,
+.fd-msg-row.me .fd-msg-bubble {
+    background: linear-gradient(135deg, #14402E 0%, #1D5C42 100%);
+    color: #fff;
+    border-radius: 18px 18px 4px 18px;
+    box-shadow: 0 2px 8px rgba(20, 64, 46, .16);
+}
+.fd-msg-row.is-other .fd-msg-bubble,
+.fd-msg-row.other .fd-msg-bubble {
+    background: #fff;
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 18px 18px 18px 4px;
+    box-shadow: 0 2px 6px rgba(20, 40, 30, .04);
+}
+.fd-msg-sender {
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--leaf-600);
+    margin-bottom: .15rem;
+}
+.fd-msg-time,
+.fd-msg-meta {
+    display: block;
+    font-size: .68rem;
+    margin-top: .25rem;
+    opacity: .72;
+    text-align: right;
+}
+
+.fd-chat-chips {
+    padding: .45rem .85rem;
+    background: #fff;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    flex-shrink: 0;
+    min-width: 0;
+    width: 100%;
+}
+.fd-chat-chip {
+    font-size: .74rem;
+    font-weight: 600;
+    padding: .26rem .65rem;
+    border-radius: 999px;
+    background: var(--paper);
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+    cursor: pointer;
+    transition: all .15s ease;
+    user-select: none;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.fd-chat-chip:hover {
+    background: var(--brand-tint);
+    color: var(--brand-strong);
+    border-color: #F6C5A4;
+}
+
+.fd-chat-footer {
+    padding: .65rem .85rem;
+    background: #fff;
+    border-top: 1px solid var(--line);
+    flex-shrink: 0;
+    min-width: 0;
+    width: 100%;
+}
+.fd-chat-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    background: var(--paper);
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    padding: .2rem .25rem .2rem .9rem;
+    transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+    width: 100%;
+    min-width: 0;
+}
+.fd-chat-input-wrap:focus-within {
+    background: #fff;
+    border-color: var(--leaf-600);
+    box-shadow: 0 0 0 3px rgba(29, 92, 66, .14);
+}
+.fd-chat-input-wrap input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    font-size: .875rem;
+    padding: .35rem 0;
+    color: var(--ink);
+}
+.fd-chat-send-btn {
+    height: 36px;
+    padding: 0 1rem;
+    border-radius: 999px;
+    border: 0;
+    background: var(--brand-strong);
+    color: #fff;
+    font-weight: 700;
+    font-size: .82rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    flex-shrink: 0;
+    transition: background-color .15s ease;
+}
+.fd-chat-send-btn:hover:not(:disabled) {
+    background: var(--brand-deep);
+}
+.fd-chat-send-btn:disabled {
+    opacity: .5;
+}
+
+/* Nút Quay lại Hộp thư trên điện thoại */
+.fd-chat-back-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: .3rem;
+    height: 34px;
+    padding: 0 .65rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink);
+    font-size: .78rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: background-color .15s ease;
+}
+.fd-chat-back-btn:hover {
+    background: var(--chip);
+}
+
+/* Trên màn hình nhỏ (Điện thoại / Tablet dọc):
+   Tách riêng màn hình HỘP THƯ và màn hình TIN NHẮN (không gộp chung) */
+@media (max-width: 991.98px) {
+    .fd-chat-container {
+        grid-template-columns: minmax(0, 1fr);
+        height: 520px;
+    }
+    .fd-chat-sidebar {
+        border-right: 0;
+        border-bottom: 0;
+        height: 100%;
+        max-height: none;
+    }
+    .fd-chat-main {
+        display: none;
+        height: 100%;
+    }
+    /* Khi người dùng bấm chọn 1 hội thoại -> ẩn Hộp thư, hiện toàn màn hình Tin nhắn */
+    .fd-chat-container.mobile-chat-open .fd-chat-sidebar {
+        display: none;
+    }
+    .fd-chat-container.mobile-chat-open .fd-chat-main {
+        display: flex;
+    }
+    .fd-chat-back-btn {
+        display: inline-flex;
+    }
+}
+
 @media (max-width: 991.98px) {
     .fd-header-inner { flex-wrap: wrap; padding: .6rem 1rem; gap: .6rem; }
     .fd-search { order: 3; flex: 1 1 100%; max-width: none; }
     .fd-brand-tag { display: none; }
 
-    .fd-shell { grid-template-columns: minmax(0, 1fr); gap: 1rem; padding: 1rem 1rem 0; }
-    .fd-rail { position: static; }
-    .fd-rail-nav { flex-direction: row; gap: .5rem; overflow-x: auto; padding: .15rem .15rem .5rem; margin: 0 -.15rem; scrollbar-width: none; }
-    .fd-rail-nav::-webkit-scrollbar { display: none; }
-    .fd-navlink { flex: 0 0 auto; white-space: nowrap; background: #fff; box-shadow: 0 0 0 1px var(--line); padding: .5rem .9rem; font-size: .875rem; gap: .5rem; }
-    .fd-navlink.active { box-shadow: none; }
-    .fd-navlink .badge { margin-left: .25rem; }
-    .fd-support { display: none; }
-
+    .fd-shell { grid-template-columns: minmax(0, 1fr); gap: 1rem; padding: .85rem 1rem 0; }
     .fd-perks { padding: 1.25rem 1rem; }
 }
 

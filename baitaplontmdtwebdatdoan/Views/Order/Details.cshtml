@@ -421,19 +421,77 @@ else
             </a>
         </div>
 
-        <!-- THÔNG TIN THANH TOÁN & TRẠNG THÁI -->
-        <div class="bg-white rounded-4 shadow-sm p-4 mb-4">
-            <h6 class="fw-bold mb-3"><i class="fa-solid fa-credit-card text-brand me-2"></i>Thanh toán</h6>
+        <!-- THÔNG TIN THANH TOÁN & TRUNG GIAN ESCROW -->
+        @{
+            var latestPayment = Model.Payments?.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+        }
+        <div class="bg-white rounded-4 shadow-sm p-4 mb-4 border-top border-4 border-success">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0"><i class="fa-solid fa-shield-halved text-success me-2"></i>Trung gian Thanh toán (Escrow)</h6>
+                <span class="badge bg-success-subtle text-success border border-success rounded-pill small">FoodiePay</span>
+            </div>
             <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <span class="text-muted small">Hình thức:</span>
                 <span class="fw-bold small text-dark">@GetPaymentMethodName(Model.PaymentMethod)</span>
             </div>
-            <div class="d-flex justify-content-between align-items-center py-2">
-                <span class="text-muted small">Trạng thái:</span>
+            @if (latestPayment != null && !string.IsNullOrEmpty(latestPayment.TransactionId))
+            {
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-muted small">Mã giao dịch:</span>
+                    <span class="fw-bold small font-monospace text-primary">@latestPayment.TransactionId</span>
+                </div>
+            }
+            <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <span class="text-muted small">Trạng thái tiền:</span>
                 <span id="paymentBadge" class="badge @(Model.PaymentStatus == "paid" ? "bg-success" : Model.PaymentStatus == "refunded" ? "bg-info text-dark" : "bg-warning text-dark") px-3 py-2 rounded-pill small">
                     <i class="fa-solid @(Model.PaymentStatus == "paid" ? "fa-circle-check" : "fa-clock") me-1"></i>@GetPaymentLabel(Model.PaymentStatus)
                 </span>
             </div>
+
+            <!-- Trạng thái Giữ tiền trung gian (Escrow) -->
+            <div class="mt-3 p-2 rounded-3 bg-light border small">
+                @if (Model.PaymentStatus == "paid" && Model.OrderStatus != "completed" && Model.OrderStatus != "cancelled")
+                {
+                    <div class="fw-bold text-primary mb-1">
+                        <i class="fa-solid fa-vault me-1"></i>Đang giữ tiền tại Cổng Trung Gian (Escrow Held)
+                    </div>
+                    <div class="text-muted" style="font-size:11px">
+                        Số tiền <strong>@Model.TotalAmount.ToString("N0")đ</strong> đang được Sàn Foodie giữ hộ để bảo vệ bạn, và chỉ giải ngân cho Quán khi đơn hàng giao thành công.
+                    </div>
+                }
+                else if (Model.PaymentStatus == "paid" && Model.OrderStatus == "completed")
+                {
+                    <div class="fw-bold text-success mb-1">
+                        <i class="fa-solid fa-building-circle-check me-1"></i>Đã quyết toán & giải ngân cho Nhà hàng
+                    </div>
+                    <div class="text-muted" style="font-size:11px">
+                        Đơn hàng đã hoàn thành. Cổng trung gian đã giải ngân doanh thu về Ví Quán và thu phí hoa hồng sàn.
+                    </div>
+                }
+                else if (Model.PaymentStatus == "refunded")
+                {
+                    <div class="fw-bold text-info-emphasis mb-1">
+                        <i class="fa-solid fa-rotate-left me-1"></i>Đã hoàn tiền từ Cổng Trung Gian về Ví Foodie
+                    </div>
+                    <div class="text-muted" style="font-size:11px">
+                        Khoản tiền <strong>@Model.TotalAmount.ToString("N0")đ</strong> đã được hoàn trả 100% vào Ví Foodie của bạn.
+                    </div>
+                }
+                else
+                {
+                    <div class="text-muted" style="font-size:11px">
+                        <i class="fa-solid fa-lock text-success me-1"></i>Giao dịch được đảm bảo an toàn bởi Trung gian Thanh toán FoodiePay.
+                    </div>
+                }
+            </div>
+
+            @if (Model.PaymentStatus == "unpaid" && Model.PaymentMethod != "cod" && Model.OrderStatus != "cancelled")
+            {
+                <a asp-controller="PaymentGateway" asp-action="Checkout" asp-route-orderId="@Model.Id"
+                   class="btn btn-brand w-100 fw-bold rounded-3 mt-3 py-2 shadow-sm">
+                    <i class="fa-solid fa-credit-card me-1"></i> Thanh toán ngay qua Cổng Trung Gian
+                </a>
+            }
         </div>
 
         <!-- ===== 4. KHỐI ĐÁNH GIÁ VÀ BÌNH LUẬN KHI MUA HÀNG XONG ===== -->

@@ -1,0 +1,245 @@
+@model baitaplontmdtwebdatdoan.Models.Payment
+@{
+    ViewData["Title"] = "Cổng Trung Gian Thanh Toán FoodiePay Escrow";
+    var order = Model.Order;
+    var bank = ViewBag.Bank as baitaplontmdtwebdatdoan.Models.BankSettings;
+    var qrUrl = ViewBag.QrUrl as string;
+    var provider = (Model.Provider ?? "bank_transfer").ToLower();
+
+    string GetProviderTitle(string p) => p switch
+    {
+        "momo" => "Cổng Thanh Toán Ví Điện Tử MoMo",
+        "zalopay" => "Cổng Thanh Toán Ví Điện Tử ZaloPay",
+        "credit_card" => "Cổng Thẻ Quốc Tế (Visa / Mastercard / JCB)",
+        "bank_transfer" => "Cổng Chuyển Khoản Ngân Hàng VietQR 24/7",
+        _ => "Cổng Trung Gian Thanh Toán FoodiePay"
+    };
+
+    string GetProviderColor(string p) => p switch
+    {
+        "momo" => "#A50064",
+        "zalopay" => "#0068FF",
+        "credit_card" => "#1e293b",
+        _ => "#14402E"
+    };
+}
+
+<div class="container py-3" style="max-width: 960px;">
+    <!-- HEADER CỔNG TRUNG GIAN THANH TOÁN -->
+    <div class="rounded-4 p-4 mb-4 text-white shadow-sm d-flex flex-wrap justify-content-between align-items-center gap-3"
+         style="background: @GetProviderColor(provider);">
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-white text-dark rounded-3 p-3 d-flex align-items-center justify-content-center shadow-sm" style="width:56px;height:56px">
+                @if (provider == "momo")
+                {
+                    <i class="fa-solid fa-mobile-screen-button fs-3" style="color:#A50064"></i>
+                }
+                else if (provider == "zalopay")
+                {
+                    <i class="fa-solid fa-comment-dollar fs-3" style="color:#0068FF"></i>
+                }
+                else if (provider == "credit_card")
+                {
+                    <i class="fa-brands fa-cc-visa fs-3 text-primary"></i>
+                }
+                else
+                {
+                    <i class="fa-solid fa-shield-halved fs-3 text-success"></i>
+                }
+            </div>
+            <div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-warning text-dark fw-bold rounded-pill px-2 py-1 small">
+                        <i class="fa-solid fa-lock me-1"></i>FOODIE ESCROW GATEWAY
+                    </span>
+                    <span class="small opacity-75">Chuẩn bảo mật PCI-DSS 256-bit</span>
+                </div>
+                <h4 class="fw-bold mb-0 mt-1">@GetProviderTitle(provider)</h4>
+            </div>
+        </div>
+
+        <div class="text-md-end bg-black bg-opacity-25 rounded-3 px-3 py-2">
+            <div class="small opacity-75">Thời gian giữ phiên giao dịch</div>
+            <div class="fw-bold fs-4 font-monospace text-warning" id="gatewayCountdown">15:00</div>
+        </div>
+    </div>
+
+    <!-- SƠ ĐỒ MINH BẠCH DÒNG TIỀN TRUNG GIAN (ESCROW FLOW) -->
+    <div class="bg-white rounded-4 shadow-sm p-3 mb-4 border-start border-4 border-success">
+        <div class="row align-items-center text-center g-2 small">
+            <div class="col-md-4">
+                <span class="badge bg-success text-white rounded-pill px-2 py-1 mb-1">Bước 1: Đang thực hiện</span>
+                <div class="fw-bold text-dark"><i class="fa-solid fa-user-check text-success me-1"></i>Khách hàng thanh toán</div>
+                <div class="text-muted" style="font-size:11px">Quét QR hoặc xác thực thẻ trên cổng</div>
+            </div>
+            <div class="col-md-4 border-start border-end">
+                <span class="badge bg-primary text-white rounded-pill px-2 py-1 mb-1">Bước 2: Bảo vệ người mua</span>
+                <div class="fw-bold text-primary"><i class="fa-solid fa-vault me-1"></i>Sàn Foodie giữ tiền trung gian</div>
+                <div class="text-muted" style="font-size:11px">Đảm bảo quán giao đúng món, hoàn tiền 100% nếu hủy</div>
+            </div>
+            <div class="col-md-4">
+                <span class="badge bg-secondary text-white rounded-pill px-2 py-1 mb-1">Bước 3: Khi nhận hàng xong</span>
+                <div class="fw-bold text-dark"><i class="fa-solid fa-store text-brand me-1"></i>Giải ngân về Ví Nhà hàng</div>
+                <div class="text-muted" style="font-size:11px">Khấu trừ hoa hồng sàn (18%) & phí cổng (1.5%)</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- CỘT TRÁI: THÔNG TIN HÓA ĐƠN & ĐỐI TÁC THỤ HƯỞNG TRUNG GIAN -->
+        <div class="col-lg-5">
+            <div class="bg-white rounded-4 shadow-sm p-4 h-100">
+                <h6 class="fw-bold text-uppercase text-muted small mb-3">
+                    <i class="fa-solid fa-file-invoice-dollar text-brand me-2"></i>Thông tin giao dịch trung gian
+                </h6>
+
+                <div class="p-3 rounded-3 bg-light border mb-3 text-center">
+                    <div class="text-muted small mb-1">Tổng số tiền thanh toán</div>
+                    <div class="display-6 fw-bold text-danger">@Model.Amount.ToString("N0") ₫</div>
+                    <div class="badge bg-success-subtle text-success border border-success rounded-pill mt-2">
+                        <i class="fa-solid fa-shield-heart me-1"></i>Được bảo chứng bởi Foodie Escrow
+                    </div>
+                </div>
+
+                <div class="d-flex flex-column gap-2 small">
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted">Mã giao dịch cổng:</span>
+                        <span class="fw-bold font-monospace text-primary">@Model.TransactionId</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted">Mã đơn hàng:</span>
+                        <span class="fw-bold text-dark">#@order.OrderCode</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted">Đơn vị bán hàng:</span>
+                        <span class="fw-bold text-dark">@(order.Restaurant?.Name ?? "Nhà hàng Foodie")</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted">Đơn vị giữ tiền trung gian:</span>
+                        <span class="fw-bold text-success">Foodie Escrow Co., Ltd</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted">Tiền món ăn:</span>
+                        <span class="fw-semibold">@order.Subtotal.ToString("N0") ₫</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted">Phí giao hàng:</span>
+                        <span class="fw-semibold">@order.ShippingFee.ToString("N0") ₫</span>
+                    </div>
+                    @if (order.DiscountAmount > 0)
+                    {
+                        <div class="d-flex justify-content-between py-2 border-bottom text-success">
+                            <span>Voucher giảm giá:</span>
+                            <span class="fw-bold">-@order.DiscountAmount.ToString("N0") ₫</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- CỘT PHẢI: GIAO DIỆN XÁC THỰC THANH TOÁN THEO PHƯƠNG THỨC -->
+        <div class="col-lg-7">
+            <div class="bg-white rounded-4 shadow-sm p-4 h-100">
+                <form asp-controller="PaymentGateway" asp-action="ProcessPayment" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="paymentId" value="@Model.Id" />
+
+                    @if (provider == "credit_card")
+                    {
+                        <!-- FORM THẺ QUỐC TẾ VISA / MASTERCARD -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold mb-0"><i class="fa-regular fa-credit-card text-primary me-2"></i>Nhập thông tin Thẻ Quốc Tế</h5>
+                            <div class="fs-4 text-muted d-flex gap-2">
+                                <i class="fa-brands fa-cc-visa text-primary"></i>
+                                <i class="fa-brands fa-cc-mastercard text-danger"></i>
+                                <i class="fa-brands fa-cc-jcb text-success"></i>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Số thẻ (Card Number)</label>
+                            <input type="text" name="cardNumber" class="form-control form-control-lg font-monospace"
+                                   value="4111 2222 3333 8888" placeholder="4xxx xxxx xxxx xxxx" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Tên in trên thẻ (Cardholder Name)</label>
+                            <input type="text" name="cardHolder" class="form-control text-uppercase"
+                                   value="@(User.Identity?.Name ?? "NGUYEN VAN A")" required />
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Ngày hết hạn (MM/YY)</label>
+                                <input type="text" class="form-control font-monospace" value="12/28" required />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Mã bảo mật CVV/CVC</label>
+                                <input type="password" class="form-control font-monospace" value="888" maxlength="4" required />
+                            </div>
+                        </div>
+
+                        <div class="p-3 rounded-3 bg-warning-subtle border border-warning mb-4">
+                            <label class="form-label small fw-bold text-dark mb-1">
+                                <i class="fa-solid fa-key text-warning-emphasis me-1"></i>Xác thực 3D-Secure OTP (Mô phỏng Cổng thanh toán)
+                            </label>
+                            <input type="text" name="otpCode" class="form-control font-monospace fw-bold" value="123456" placeholder="Nhập mã OTP (mặc định: 123456)" required />
+                            <div class="form-text small">Mã OTP thử nghiệm được điền sẵn để kiểm thử nhanh.</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- GIAO DIỆN QUÉT MÃ QR TRUNG GIAN (VIETQR / MOMO / ZALOPAY) -->
+                        <div class="text-center mb-3">
+                            <h5 class="fw-bold mb-1">Quét mã QR để thanh toán qua Cổng Trung Gian</h5>
+                            <p class="text-muted small mb-3">
+                                Mở ứng dụng <strong>@(provider == "momo" ? "Ví MoMo" : provider == "zalopay" ? "Ví ZaloPay" : "Ngân hàng bất kỳ (VietQR)")</strong> và quét mã bên dưới
+                            </p>
+
+                            <div class="d-inline-block p-3 rounded-4 border shadow-sm bg-white mb-3 position-relative">
+                                <img src="@qrUrl" alt="QR Code Thanh Toán" class="img-fluid rounded-3" style="max-width: 230px;" />
+                            </div>
+
+                            <div class="bg-light rounded-3 p-3 text-start border small mb-3">
+                                <div class="row g-2">
+                                    <div class="col-sm-5 text-muted">Tài khoản Trung gian Sàn:</div>
+                                    <div class="col-sm-7 fw-bold text-dark">@(bank?.AccountName ?? "CONG TRUNG GIAN FOODIE ESCROW")</div>
+
+                                    <div class="col-sm-5 text-muted">Ngân hàng / Ví nhận:</div>
+                                    <div class="col-sm-7 fw-bold text-primary">@(bank?.BankName ?? "Vietcombank") - @(bank?.AccountNo ?? "1023127044")</div>
+
+                                    <div class="col-sm-5 text-muted">Nội dung tự động:</div>
+                                    <div class="col-sm-7 fw-bold font-monospace"><mark class="px-2 py-1 rounded">@order.OrderCode</mark></div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="d-flex flex-column flex-sm-row gap-2 mt-3">
+                        <button type="submit" name="decision" value="cancel" class="btn btn-outline-secondary py-3 px-4 rounded-3 fw-semibold">
+                            <i class="fa-solid fa-xmark me-1"></i> Hủy giao dịch
+                        </button>
+                        <button type="submit" name="decision" value="confirm" class="btn btn-success flex-fill py-3 px-4 rounded-3 fw-bold fs-6 shadow-sm">
+                            <i class="fa-solid fa-circle-check me-2"></i> Xác nhận đã thanh toán (@Model.Amount.ToString("N0")đ)
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Đồng hồ đếm ngược 15 phút cho phiên giao dịch trung gian
+        let remainingSec = 15 * 60;
+        const timerEl = document.getElementById('gatewayCountdown');
+        setInterval(() => {
+            if (remainingSec > 0) remainingSec--;
+            const m = String(Math.floor(remainingSec / 60)).padStart(2, '0');
+            const s = String(remainingSec % 60).padStart(2, '0');
+            if (timerEl) timerEl.textContent = `${m}:${s}`;
+        }, 1000);
+    </script>
+}
+

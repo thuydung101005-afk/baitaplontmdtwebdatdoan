@@ -59,29 +59,34 @@
 </div>
 
 <!-- TABS NAVIGATION -->
-<ul class="nav nav-pills mb-4 bg-white p-2 rounded-4 shadow-sm" style="width:fit-content">
+<ul class="nav nav-pills fd-owner-tabs mb-4 bg-white p-2 rounded-4 shadow-sm">
     <li class="nav-item">
-        <a class="nav-link active bg-brand text-white fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Orders">
+        <a class="nav-link active bg-brand text-white fw-semibold px-3 py-2 rounded-3" asp-controller="RestaurantOwner" asp-action="Orders">
             <i class="fa-solid fa-receipt me-2"></i>Đơn hàng
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Menu">
+        <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="RestaurantOwner" asp-action="Menu">
             <i class="fa-solid fa-utensils me-2"></i>Thực đơn món ăn
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Revenue">
+        <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="RestaurantOwner" asp-action="Revenue">
             <i class="fa-solid fa-chart-line me-2 text-success"></i>Doanh thu & Tài chính
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="Chat" asp-action="ShopInbox">
+        <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="Voucher" asp-action="Manage">
+            <i class="fa-solid fa-ticket me-2 text-warning"></i>Voucher quán
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="Chat" asp-action="ShopInbox">
             <i class="fa-regular fa-comments me-2 text-primary"></i>Tin nhắn khách
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Settings">
+        <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="RestaurantOwner" asp-action="Settings">
             <i class="fa-solid fa-gear me-2"></i>Hồ sơ & Ảnh nhà hàng
         </a>
     </li>
@@ -199,31 +204,34 @@ else
                     <!-- KHỐI DANH SÁCH MÓN ĂN -->
                     <div class="col-lg-7">
                         <h6 class="fw-bold text-muted text-uppercase small mb-2"><i class="fa-solid fa-utensils text-brand me-1"></i>Chi tiết món ăn cần chuẩn bị</h6>
-                        <div class="table-responsive">
-                            <table class="table table-sm table-borderless align-middle mb-0">
-                                <tbody>
-                                    @foreach (var it in o.OrderItems)
-                                    {
-                                        <tr class="border-bottom">
-                                            <td style="width:40px">
-                                                <img src="@(string.IsNullOrEmpty(it.MenuItem?.ImageUrl) ? "https://placehold.co/60x60?text=Food" : it.MenuItem.ImageUrl)"
-                                                     class="rounded-2 object-fit-cover shadow-xs" width="36" height="36" alt="@it.ItemName" 
-                                                     onerror="this.src='https://placehold.co/60x60?text=Food';" />
-                                            </td>
-                                            <td>
-                                                <div class="fw-bold text-dark small">@it.ItemName</div>
-                                                <div class="text-muted" style="font-size:11px">@it.UnitPrice.ToString("N0")đ/phần</div>
-                                            </td>
-                                            <td class="text-center fw-bold text-brand fs-6">
-                                                x@it.Quantity
-                                            </td>
-                                            <td class="text-end fw-bold text-dark small">
-                                                @it.LineTotal.ToString("N0")đ
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
+                        <div class="d-flex flex-column gap-2">
+                            @foreach (var it in o.OrderItems)
+                            {
+                                var rawImg = it.MenuItem?.ImageUrl;
+                                var thumbUrl = !string.IsNullOrWhiteSpace(rawImg)
+                                    ? rawImg.Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)[0].Trim()
+                                    : "https://placehold.co/60x60?text=Food";
+
+                                <div class="d-flex align-items-center justify-content-between gap-2 py-2 border-bottom">
+                                    <div class="d-flex align-items-center gap-2 min-w-0">
+                                        <img src="@thumbUrl"
+                                             class="rounded-2 object-fit-cover shadow-xs flex-shrink-0" width="44" height="44" alt="@it.ItemName"
+                                             onerror="this.src='https://placehold.co/60x60?text=Food';" />
+                                        <div class="min-w-0">
+                                            <div class="fw-bold text-dark small">@it.ItemName</div>
+                                            <div class="text-muted" style="font-size:11px">@it.UnitPrice.ToString("N0")đ/phần</div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-3 flex-shrink-0">
+                                        <span class="badge bg-brand-subtle text-brand fw-bold px-2 py-1 rounded-pill" style="font-size:13px">
+                                            x@(it.Quantity)
+                                        </span>
+                                        <span class="fw-bold text-dark small text-end" style="min-width:72px">
+                                            @it.LineTotal.ToString("N0")đ
+                                        </span>
+                                    </div>
+                                </div>
+                            }
                         </div>
                     </div>
                 </div>

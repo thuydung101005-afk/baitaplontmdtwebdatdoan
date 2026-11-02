@@ -225,10 +225,13 @@ namespace baitaplontmdtwebdatdoan.Controllers
                     (!appliedVoucher.RestaurantId.HasValue || appliedVoucher.RestaurantId.Value == restaurantId) &&
                     subtotal >= appliedVoucher.MinOrderAmount)
                 {
+                    var totalUsed = await _context.VoucherUsages.CountAsync(u => u.VoucherId == appliedVoucher.Id);
                     var userUsageCount = await _context.VoucherUsages
                         .CountAsync(u => u.VoucherId == appliedVoucher.Id && u.UserId == CurrentUserId);
 
-                    if (userUsageCount < appliedVoucher.UsageLimitPerUser)
+                    var withinTotalLimit = !appliedVoucher.UsageLimit.HasValue || totalUsed < appliedVoucher.UsageLimit.Value;
+
+                    if (withinTotalLimit && userUsageCount < appliedVoucher.UsageLimitPerUser)
                     {
                         if (appliedVoucher.DiscountType == "percent" || appliedVoucher.DiscountType == "percentage")
                         {
@@ -237,15 +240,15 @@ namespace baitaplontmdtwebdatdoan.Controllers
                             {
                                 discountAmount = appliedVoucher.MaxDiscount.Value;
                             }
+                            if (discountAmount > subtotal) discountAmount = subtotal;
+                        }
+                        else if (appliedVoucher.DiscountType == "free_shipping")
+                        {
+                            discountAmount = Math.Min(shippingFee, appliedVoucher.DiscountValue);
                         }
                         else
                         {
-                            discountAmount = appliedVoucher.DiscountValue;
-                        }
-
-                        if (discountAmount > subtotal)
-                        {
-                            discountAmount = subtotal;
+                            discountAmount = Math.Min(subtotal, appliedVoucher.DiscountValue);
                         }
                     }
                 }
@@ -273,11 +276,6 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 wallet.Balance -= totalAmount;
                 paymentStatus = "paid";
             }
-            else if (method == "credit_card" || method == "momo" || method == "zalopay")
-            {
-                // Giả lập thanh toán trực tuyến thành công
-                paymentStatus = "paid";
-            }
 
             var order = new Order
             {
@@ -297,6 +295,21 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 UpdatedAt = DateTime.UtcNow
             };
             _context.Orders.Add(order);
+            await _context.SaveChangesAsync();
+
+            // Tạo bản ghi giao dịch tại Cổng Trung Gian Thanh Toán (Payments)
+            var isOnlineGateway = method == "bank_transfer" || method == "momo" || method == "zalopay" || method == "credit_card";
+            var paymentRecord = new Payment
+            {
+                OrderId = order.Id,
+                Provider = method,
+                TransactionId = $"GW-{method.ToUpper()}-{DateTime.UtcNow.Ticks.ToString().Substring(10)}",
+                Amount = totalAmount,
+                Status = method == "wallet" ? "escrow_held" : (isOnlineGateway ? "pending" : "cod_pending"),
+                RawResponse = method == "wallet" ? "{\"escrow\":\"HELD_BY_PLATFORM\",\"source\":\"FoodieWallet\"}" : null,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Payments.Add(paymentRecord);
             await _context.SaveChangesAsync();
 
             // Nếu thanh toán bằng ví, ghi nhận transaction
@@ -343,7 +356,9 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 OrderId = order.Id,
                 Status = "pending",
                 ChangedAt = DateTime.UtcNow,
-                Note = "Đơn hàng được tạo thành công" + (discountAmount > 0 ? $" (Đã áp dụng mã {appliedVoucher?.Code} - giảm {discountAmount:N0}đ)" : "")
+                Note = "Đơn hàng được tạo thành công"
+                    + (discountAmount > 0 ? $" (Đã áp dụng mã {appliedVoucher?.Code} - giảm {discountAmount:N0}đ)" : "")
+                    + (method == "wallet" ? $" [Trung gian Foodie Escrow đang giữ {totalAmount:N0}đ]" : "")
             });
 
             // Chỉ xoá đúng những món đã chọn thanh toán (Mua ngay thì không đụng tới giỏ hàng)
@@ -353,6 +368,12 @@ namespace baitaplontmdtwebdatdoan.Controllers
 
             // Bắn SignalR thông báo tới quán ăn theo thời gian thực
             await _hub.Clients.Group($"restaurant-{restaurantId}").SendAsync("NewOrderReceived", order.Id, order.OrderCode, order.TotalAmount);
+
+            // Nếu khách chọn phương thức qua Cổng Trung Gian Thanh Toán Trực Tuyến -> chuyển tới Cổng Thanh Toán
+            if (isOnlineGateway)
+            {
+                return RedirectToAction("Checkout", "PaymentGateway", new { paymentId = paymentRecord.Id });
+            }
 
             return RedirectToAction("Details", new { id = order.Id });
         }
@@ -398,13 +419,14 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.MenuItem)
                 .Include(o => o.OrderStatusHistories)
+                .Include(o => o.Payments)
                 .Include(o => o.Reviews)
                     .ThenInclude(r => r.User)
                 .Include(o => o.Shipper)
                 .FirstOrDefaultAsync(o => o.Id == id);
 
             if (order == null) return NotFound();
-            if (order.UserId != CurrentUserId) return Forbid();
+            if (order.UserId != CurrentUserId && !User.IsInRole("admin") && !User.IsInRole("restaurant_owner")) return Forbid();
 
             ViewBag.ExistingReview = order.Reviews.FirstOrDefault(r => r.UserId == CurrentUserId);
             ViewBag.RestaurantLat = order.Restaurant?.Latitude ?? 10.7769m;
@@ -424,7 +446,7 @@ namespace baitaplontmdtwebdatdoan.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ConfirmPayment(long id)
         {
-            var order = await _context.Orders.FindAsync(id);
+            var order = await _context.Orders.Include(o => o.Payments).FirstOrDefaultAsync(o => o.Id == id);
             if (order == null) return NotFound();
             if (order.UserId != CurrentUserId) return Forbid();
 
@@ -437,19 +459,26 @@ namespace baitaplontmdtwebdatdoan.Controllers
             order.PaymentStatus = "paid";
             order.UpdatedAt = DateTime.UtcNow;
 
+            var pay = order.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            if (pay != null)
+            {
+                pay.Status = "escrow_held";
+                pay.RawResponse = "{\"escrow\":\"HELD_BY_PLATFORM\",\"confirmedBy\":\"CustomerVietQR\"}";
+            }
+
             _context.OrderStatusHistories.Add(new OrderStatusHistory
             {
                 OrderId = order.Id,
                 Status = order.OrderStatus,
                 ChangedAt = DateTime.UtcNow,
-                Note = "Khách hàng xác nhận đã chuyển khoản qua VietQR"
+                Note = "Khách hàng xác nhận đã chuyển khoản qua VietQR (Cổng trung gian Foodie Escrow đang tạm giữ tiền)"
             });
 
             await _context.SaveChangesAsync();
 
             await _hub.Clients.Group($"order-{id}").SendAsync("PaymentUpdated", "paid");
 
-            TempData["SuccessMessage"] = "Xác nhận thanh toán thành công!";
+            TempData["SuccessMessage"] = "Xác nhận thanh toán thành công! Tiền được bảo vệ bởi Trung gian Thanh toán Foodie Escrow.";
             return RedirectToAction("Details", new { id });
         }
 
@@ -458,7 +487,7 @@ namespace baitaplontmdtwebdatdoan.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Cancel(long id, string reason)
         {
-            var order = await _context.Orders.FindAsync(id);
+            var order = await _context.Orders.Include(o => o.Payments).FirstOrDefaultAsync(o => o.Id == id);
             if (order == null) return NotFound();
             if (order.UserId != CurrentUserId) return Forbid();
 
@@ -476,23 +505,37 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 return RedirectToAction("Details", new { id });
             }
 
-            // Nếu đã thanh toán bằng ví điện tử, tự động hoàn trả số dư vào ví Foodie
-            if (order.PaymentStatus == "paid" && order.PaymentMethod == "wallet")
+            // Nếu đã thanh toán (qua Ví, VietQR, MoMo, ZaloPay, Thẻ), Cổng Trung Gian Escrow tự động hoàn trả 100% số dư vào ví Foodie
+            if (order.PaymentStatus == "paid")
             {
                 var wallet = await _context.Wallets.FindAsync(CurrentUserId);
-                if (wallet != null)
+                if (wallet == null)
                 {
-                    wallet.Balance += order.TotalAmount;
-                    _context.WalletTransactions.Add(new WalletTransaction
-                    {
-                        UserId = CurrentUserId,
-                        Type = "refund",
-                        Amount = order.TotalAmount,
-                        ReferenceOrderId = order.Id,
-                        CreatedAt = DateTime.UtcNow
-                    });
-                    order.PaymentStatus = "refunded";
+                    wallet = new Wallet { UserId = CurrentUserId, Balance = 0 };
+                    _context.Wallets.Add(wallet);
                 }
+                wallet.Balance += order.TotalAmount;
+                _context.WalletTransactions.Add(new WalletTransaction
+                {
+                    UserId = CurrentUserId,
+                    Type = "refund",
+                    Amount = order.TotalAmount,
+                    ReferenceOrderId = order.Id,
+                    CreatedAt = DateTime.UtcNow
+                });
+                order.PaymentStatus = "refunded";
+
+                foreach (var p in order.Payments)
+                {
+                    p.Status = "refunded";
+                }
+            }
+
+            // Hoàn lại lượt sử dụng Voucher nếu đơn bị hủy
+            var usages = await _context.VoucherUsages.Where(u => u.OrderId == order.Id).ToListAsync();
+            if (usages.Any())
+            {
+                _context.VoucherUsages.RemoveRange(usages);
             }
 
             order.OrderStatus = "cancelled";
@@ -504,14 +547,14 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 OrderId = order.Id,
                 Status = "cancelled",
                 ChangedAt = DateTime.UtcNow,
-                Note = "Khách hàng huỷ đơn: " + order.CancelReason + (order.PaymentStatus == "refunded" ? $" (Đã tự động hoàn {order.TotalAmount:N0}đ vào Ví Foodie)" : "")
+                Note = "Khách hàng huỷ đơn: " + order.CancelReason + (order.PaymentStatus == "refunded" ? $" (Trung gian Foodie Escrow đã hoàn {order.TotalAmount:N0}đ vào Ví Foodie)" : "")
             });
 
             await _context.SaveChangesAsync();
 
             await _hub.Clients.Group($"order-{id}").SendAsync("StatusUpdated", "cancelled", "Đơn hàng đã bị huỷ");
 
-            TempData["SuccessMessage"] = "Đã huỷ đơn hàng thành công." + (order.PaymentStatus == "refunded" ? $" Đã hoàn {order.TotalAmount:N0}đ vào Ví của bạn." : "");
+            TempData["SuccessMessage"] = "Đã huỷ đơn hàng thành công." + (order.PaymentStatus == "refunded" ? $" Đã hoàn {order.TotalAmount:N0}đ từ Trung gian thanh toán vào Ví của bạn." : "");
             return RedirectToAction("Details", new { id });
         }
 
@@ -656,18 +699,57 @@ namespace baitaplontmdtwebdatdoan.Controllers
         [Authorize(Roles = "restaurant_owner,admin")]
         public async Task<IActionResult> UpdateStatus(long id, string newStatus)
         {
-            var order = await _context.Orders.FindAsync(id);
+            var order = await _context.Orders
+                .Include(o => o.Restaurant)
+                .Include(o => o.Payments)
+                .FirstOrDefaultAsync(o => o.Id == id);
             if (order == null) return NotFound();
 
             order.OrderStatus = newStatus;
             order.UpdatedAt = DateTime.UtcNow;
+
+            string extraEscrowNote = "";
+            if (newStatus == "completed")
+            {
+                order.PaymentStatus = "paid";
+                var comm = Math.Round(order.Subtotal * 0.18m, 0);
+                var payFee = Math.Round(order.Subtotal * 0.015m, 0);
+                var merchantNet = Math.Max(0, order.Subtotal - comm - payFee);
+
+                foreach (var p in order.Payments)
+                {
+                    p.Status = "settled";
+                }
+
+                if (order.Restaurant != null)
+                {
+                    var ownerWallet = await _context.Wallets.FindAsync(order.Restaurant.OwnerId);
+                    if (ownerWallet == null)
+                    {
+                        ownerWallet = new Wallet { UserId = order.Restaurant.OwnerId, Balance = 0 };
+                        _context.Wallets.Add(ownerWallet);
+                    }
+                    ownerWallet.Balance += merchantNet;
+
+                    _context.WalletTransactions.Add(new WalletTransaction
+                    {
+                        UserId = order.Restaurant.OwnerId,
+                        Type = "escrow_settlement",
+                        Amount = merchantNet,
+                        ReferenceOrderId = order.Id,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+
+                extraEscrowNote = $" — Trung gian Foodie Escrow đã giải ngân +{merchantNet:N0}đ về Ví Quán (Thu phí sàn 19.5%: {(comm + payFee):N0}đ)";
+            }
 
             _context.OrderStatusHistories.Add(new OrderStatusHistory
             {
                 OrderId = order.Id,
                 Status = newStatus,
                 ChangedAt = DateTime.UtcNow,
-                Note = "Cập nhật trạng thái: " + GetStatusLabel(newStatus)
+                Note = "Cập nhật trạng thái: " + GetStatusLabel(newStatus) + extraEscrowNote
             });
 
             await _context.SaveChangesAsync();

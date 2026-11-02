@@ -23,29 +23,34 @@
 </div>
 
 <!-- TABS NAVIGATION -->
-<ul class="nav nav-pills mb-4 bg-white p-2 rounded-4 shadow-sm" style="width:fit-content">
+<ul class="nav nav-pills fd-owner-tabs mb-4 bg-white p-2 rounded-4 shadow-sm">
     <li class="nav-item">
-        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Orders">
+        <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="RestaurantOwner" asp-action="Orders">
             <i class="fa-solid fa-receipt me-2"></i>Đơn hàng
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Menu">
+        <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="RestaurantOwner" asp-action="Menu">
             <i class="fa-solid fa-utensils me-2"></i>Thực đơn món ăn
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Revenue">
+        <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="RestaurantOwner" asp-action="Revenue">
             <i class="fa-solid fa-chart-line me-2 text-success"></i>Doanh thu & Tài chính
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link text-dark fw-semibold px-4 rounded-3" asp-controller="Chat" asp-action="ShopInbox">
+        <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="Voucher" asp-action="Manage">
+            <i class="fa-solid fa-ticket me-2 text-warning"></i>Voucher quán
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link text-dark fw-semibold px-3 py-2 rounded-3" asp-controller="Chat" asp-action="ShopInbox">
             <i class="fa-regular fa-comments me-2 text-primary"></i>Tin nhắn khách
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link active bg-brand text-white fw-semibold px-4 rounded-3" asp-controller="RestaurantOwner" asp-action="Settings">
+        <a class="nav-link active bg-brand text-white fw-semibold px-3 py-2 rounded-3" asp-controller="RestaurantOwner" asp-action="Settings">
             <i class="fa-solid fa-gear me-2"></i>Hồ sơ & Ảnh nhà hàng
         </a>
     </li>

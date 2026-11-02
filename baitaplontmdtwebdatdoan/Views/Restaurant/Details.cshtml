@@ -185,56 +185,58 @@ else
     }
 </div>
 
-<!-- ===== CỬA SỔ CHAT VỚI QUÁN ĂN NỔI (FLOATING CHAT DRAWER SHOPEE STYLE) ===== -->
+<!-- ===== CỬA SỔ CHAT VỚI QUÁN ĂN NỔI (FLOATING CHAT DRAWER MESSENGER / SHOPEE STYLE) ===== -->
 <div id="shopChatDrawer" class="position-fixed shadow-lg rounded-4 overflow-hidden border bg-white" 
-     style="bottom: 24px; right: 24px; width: 360px; height: 500px; z-index: 1060; display: none; flex-direction: column;">
+     style="bottom: 20px; right: 20px; width: 375px; max-width: calc(100vw - 32px); height: 520px; max-height: calc(100vh - 96px); z-index: 1060; display: none; flex-direction: column;">
     
     <!-- Chat Header -->
-    <div class="p-3 text-white d-flex justify-content-between align-items-center" 
-         style="background: var(--leaf);">
+    <div class="p-3 text-white d-flex justify-content-between align-items-center flex-shrink-0" 
+         style="background: linear-gradient(135deg, #14402E 0%, #1D5C42 100%);">
         <div class="d-flex align-items-center gap-2">
             <div class="position-relative">
                 <img src="@(string.IsNullOrEmpty(Model.Restaurant.LogoUrl) ? "https://placehold.co/60x60?text=Food" : Model.Restaurant.LogoUrl)" 
-                     class="rounded-circle bg-white p-1 border" width="38" height="38" alt="@Model.Restaurant.Name" 
+                     class="rounded-circle bg-white p-1 border" width="40" height="40" alt="@Model.Restaurant.Name" 
                      onerror="this.src='https://placehold.co/60x60?text=Food';" />
                 <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle p-1"></span>
             </div>
             <div>
-                <div class="fw-bold text-truncate" style="max-width: 200px; font-size: 14px;">@Model.Restaurant.Name</div>
+                <div class="fw-bold text-truncate" style="max-width: 190px; font-size: 14px;">@Model.Restaurant.Name</div>
                 <div style="font-size: 11px; opacity: 0.9;">
                     <i class="fa-solid fa-circle text-success me-1" style="font-size: 8px;"></i>Đang hoạt động &bull; Phản hồi nhanh
                 </div>
             </div>
         </div>
-        <div>
+        <div class="d-flex align-items-center gap-1">
+            <a href="/Chat/MyChats?restaurantId=@Model.Restaurant.Id" class="btn btn-sm btn-link text-white p-1" title="Mở rộng toàn màn hình">
+                <i class="fa-solid fa-expand"></i>
+            </a>
             <button type="button" class="btn btn-sm btn-link text-white p-1" id="btnCloseChatDrawer" title="Đóng chat">
                 <i class="fa-solid fa-xmark fs-5"></i>
             </button>
         </div>
     </div>
 
-    <!-- Quick Suggestion Pills (Câu hỏi gợi ý nhanh Shopee) -->
-    <div class="p-2 bg-light border-bottom d-flex gap-2 overflow-auto text-nowrap" style="font-size: 11px;">
-        <span class="badge bg-white text-dark border rounded-pill px-2 py-1 cursor-pointer quick-chat-pill">Quán còn mở cửa không ạ?</span>
-        <span class="badge bg-white text-dark border rounded-pill px-2 py-1 cursor-pointer quick-chat-pill">Món nào bán chạy nhất?</span>
-        <span class="badge bg-white text-dark border rounded-pill px-2 py-1 cursor-pointer quick-chat-pill">Có mã giảm giá không ạ?</span>
-        <span class="badge bg-white text-dark border rounded-pill px-2 py-1 cursor-pointer quick-chat-pill">Bao lâu thì giao tới ạ?</span>
-    </div>
-
     <!-- Vùng tin nhắn -->
-    <div class="flex-grow-1 overflow-auto p-3 d-flex flex-column gap-2 bg-light" id="chatDrawerMessages" style="font-size: 13px;">
+    <div class="fd-chat-messages" id="chatDrawerMessages" style="font-size: 13px;">
         <div class="text-center py-4 text-muted small my-auto">
             <i class="fa-regular fa-comment-dots fs-2 mb-2 text-brand opacity-50"></i>
             <div>Đang kết nối với @Model.Restaurant.Name...</div>
         </div>
     </div>
 
+    <!-- Câu hỏi gợi ý nhanh (Tự xuống dòng gọn gàng, không có thanh cuộn ngang che khuất) -->
+    <div class="fd-chat-chips" style="padding: 8px 12px;">
+        <span class="fd-chat-chip quick-chat-pill" style="font-size: 11px; padding: 4px 10px;">👋 Quán còn mở cửa không ạ?</span>
+        <span class="fd-chat-chip quick-chat-pill" style="font-size: 11px; padding: 4px 10px;">🍜 Món nào bán chạy nhất?</span>
+        <span class="fd-chat-chip quick-chat-pill" style="font-size: 11px; padding: 4px 10px;">🎟️ Có mã giảm giá không ạ?</span>
+        <span class="fd-chat-chip quick-chat-pill" style="font-size: 11px; padding: 4px 10px;">🛵 Bao lâu thì giao tới ạ?</span>
+    </div>
+
     <!-- Khung soạn thảo tin nhắn -->
-    <div class="p-2 bg-white border-top">
-        <div class="input-group">
-            <input type="text" id="chatDrawerInput" class="form-control form-control-sm rounded-start-pill border py-2 px-3" 
-                   placeholder="Nhập tin nhắn gửi quán..." />
-            <button type="button" id="chatDrawerSendBtn" class="btn btn-brand btn-sm rounded-end-pill px-3 fw-bold">
+    <div class="fd-chat-footer" style="padding: 10px 12px;">
+        <div class="fd-chat-input-wrap" style="padding: 4px 6px 4px 14px;">
+            <input type="text" id="chatDrawerInput" placeholder="Nhập tin nhắn gửi quán..." />
+            <button type="button" id="chatDrawerSendBtn" class="fd-chat-send-btn" style="width: 34px; height: 34px;" title="Gửi">
                 <i class="fa-solid fa-paper-plane"></i>
             </button>
         </div>
@@ -245,6 +247,7 @@ else
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script>
         const restaurantId = "@Model.Restaurant.Id";
+        const restaurantOwnerId = "@Model.Restaurant.OwnerId";
         const currentUserId = "@(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0")";
 
         // ===== 1. XỬ LÝ THEO DÕI QUÁN ĂN (FOLLOW SHOP) =====
@@ -299,6 +302,13 @@ else
         let chatHub = null;
         let isChatLoaded = false;
 
+        // Nội dung các tin khách vừa gửi, dùng để bỏ qua bản broadcast gửi ngược lại chính mình
+        const pendingOwn = [];
+
+        function nowTime() {
+            return new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+        }
+
         function initChatConnection() {
             if (chatHub) return;
 
@@ -308,16 +318,27 @@ else
                 .build();
 
             chatHub.on("ReceiveMessage", function (role, senderName, text, time) {
+                if (role === 'customer') {
+                    const i = pendingOwn.indexOf(text);
+                    if (i !== -1) { pendingOwn.splice(i, 1); return; }   // tin của mình đã hiện sẵn
+                }
                 appendChatMessage(role === 'customer', senderName, text, time);
             });
 
-            chatHub.start().then(() => {
+            // Sau khi tự kết nối lại, SignalR quên hết phòng chat: phải vào lại phòng
+            chatHub.onreconnected(function () {
                 chatHub.invoke("JoinChatRoom", restaurantId.toString(), currentUserId.toString()).catch(() => {});
             });
+
+            chatHub.start()
+                .then(() => chatHub.invoke("JoinChatRoom", restaurantId.toString(), currentUserId.toString()))
+                .catch(err => console.error('Không kết nối được chat realtime:', err));
         }
 
         function loadChatMessages() {
-            fetch(`/Chat/GetMessages?restaurantId=${restaurantId}&customerId=${currentUserId}`)
+            fetch(`/Chat/GetMessages?restaurantId=${restaurantId}&customerId=${currentUserId}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
                 .then(res => {
                     if (res.status === 401) {
                         window.location.href = '/Account/Login?returnUrl=' + encodeURIComponent(window.location.pathname);
@@ -328,31 +349,55 @@ else
                 .then(data => {
                     if (!data) return;
                     chatBox.innerHTML = '';
+                    if (data.isOwnerSelf) {
+                        chatBox.innerHTML = `<div class="chat-empty text-center text-muted small my-auto p-3">
+                            <i class="fa-solid fa-store fs-2 mb-2 text-brand"></i>
+                            <div class="mb-2">Bạn đang là chủ của quán ăn này.</div>
+                            <a href="/Chat/ShopInbox?restaurantId=${restaurantId}" class="btn btn-brand btn-sm rounded-pill px-3 fw-bold">Mở Hộp thư khách hàng</a>
+                        </div>`;
+                        return;
+                    }
                     if (data.messages && data.messages.length > 0) {
                         data.messages.forEach(m => {
                             appendChatMessage(m.isMe, m.senderName, m.message, m.time);
                         });
                     } else {
-                        chatBox.innerHTML = '<div class="text-center text-muted small my-auto">Hãy gửi tin nhắn đầu tiên để bắt đầu trò chuyện với quán nhé! 👋</div>';
+                        chatBox.innerHTML = '<div class="chat-empty text-center text-muted small my-auto">Hãy gửi tin nhắn đầu tiên để bắt đầu trò chuyện với quán nhé! 👋</div>';
                     }
                     chatBox.scrollTop = chatBox.scrollHeight;
+                    if (typeof updateChatBadge === 'function') updateChatBadge();
                 });
         }
 
         function appendChatMessage(isMe, senderName, text, time) {
-            const div = document.createElement('div');
-            div.className = isMe ? 'd-flex justify-content-end mb-1' : 'd-flex justify-content-start mb-1';
+            const empty = chatBox.querySelector('.chat-empty');
+            if (empty) empty.remove();
 
-            const bg = isMe ? 'bg-brand text-white' : 'bg-white text-dark border';
-            div.innerHTML = `
-                <div class="rounded-4 py-2 px-3 shadow-xs ${bg}" style="max-width: 80%;">
-                    ${!isMe ? `<div class="fw-bold mb-1 text-brand" style="font-size:10px;">${senderName}</div>` : ''}
-                    <div>${escapeHtml(text)}</div>
-                    <div class="text-end mt-1" style="font-size:9px; opacity:0.75;">${time}</div>
-                </div>
-            `;
-            chatBox.appendChild(div);
+            const row = document.createElement('div');
+            row.className = 'fd-msg-row ' + (isMe ? 'me' : 'other');
+
+            if (isMe) {
+                row.innerHTML = `
+                    <div class="fd-msg-bubble">
+                        <div>${escapeHtml(text)}</div>
+                        <span class="fd-msg-meta">${time} <i class="fa-solid fa-check-double ms-1"></i></span>
+                    </div>
+                `;
+            } else {
+                row.innerHTML = `
+                    <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(senderName || 'Quán')}&background=14402E&color=fff"
+                         class="fd-msg-avatar" alt="avatar" />
+                    <div class="fd-msg-bubble">
+                        <div class="fw-bold mb-1" style="font-size:11px; color:#14402E;">${escapeHtml(senderName)}</div>
+                        <div>${escapeHtml(text)}</div>
+                        <span class="fd-msg-meta">${time}</span>
+                    </div>
+                `;
+            }
+
+            chatBox.appendChild(row);
             chatBox.scrollTop = chatBox.scrollHeight;
+            return row;
         }
 
         function sendCustomerMessage(textToSend) {
@@ -366,10 +411,31 @@ else
 
             chatInput.value = '';
 
+            // Hiện tin ngay khi bấm gửi, không chờ server lưu DB rồi broadcast
+            pendingOwn.push(text);
+            const bubble = appendChatMessage(true, '', text, nowTime());
+
             fetch('/Chat/SendMessage', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: `restaurantId=${restaurantId}&customerId=${currentUserId}&message=${encodeURIComponent(text)}`
+            })
+            .then(r => {
+                if (r.status === 401) {
+                    window.location.href = '/Account/Login?returnUrl=' + encodeURIComponent(window.location.pathname);
+                    throw new Error('Phiên đăng nhập đã hết hạn');
+                }
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(d => {
+                if (!d.success) throw new Error(d.message || 'Gửi tin thất bại');
+            })
+            .catch(err => {
+                const i = pendingOwn.indexOf(text);
+                if (i !== -1) pendingOwn.splice(i, 1);
+                bubble.remove();
+                alert('Không gửi được tin nhắn: ' + err.message);
             });
         }
 
@@ -377,6 +443,10 @@ else
             btnOpenChat.addEventListener('click', function() {
                 if (currentUserId === "0") {
                     window.location.href = '/Account/Login?returnUrl=' + encodeURIComponent(window.location.pathname);
+                    return;
+                }
+                if (currentUserId === restaurantOwnerId) {
+                    window.location.href = `/Chat/ShopInbox?restaurantId=${restaurantId}`;
                     return;
                 }
 
@@ -416,13 +486,13 @@ else
         // Quick suggestions
         document.querySelectorAll('.quick-chat-pill').forEach(pill => {
             pill.addEventListener('click', function() {
-                sendCustomerMessage(this.innerText);
+                sendCustomerMessage(this.innerText.replace(/^[^\wÀ-ỹ]+/, '').trim());
             });
         });
 
         function escapeHtml(text) {
             const d = document.createElement('div');
-            d.innerText = text;
+            d.innerText = text == null ? '' : text;
             return d.innerHTML;
         }
     </script>

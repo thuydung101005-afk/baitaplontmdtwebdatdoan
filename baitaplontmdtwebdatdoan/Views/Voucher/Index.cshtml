@@ -1,18 +1,53 @@
 @model List<baitaplontmdtwebdatdoan.Models.Voucher>
 @{
-    ViewData["Title"] = "Mã giảm giá & Khuyến mãi";
+    ViewData["Title"] = "Kho Mã Giảm Giá & Khuyến Mãi Foodie";
+    var currentFilter = ViewBag.CurrentFilter as string ?? "all";
+    var canManage = User.IsInRole("admin") || User.IsInRole("restaurant_owner");
 }
 
-<div class="bg-gradient-brand text-white rounded-4 p-4 p-md-5 mb-4 shadow-sm" style="background: var(--leaf);">
-    <div class="row align-items-center">
+<!-- BANNER KHO VOUCHER -->
+<div class="bg-gradient-brand text-white rounded-4 p-4 p-md-5 mb-4 shadow-sm" style="background: linear-gradient(135deg, #14402E 0%, #1D5C42 100%);">
+    <div class="row align-items-center g-3">
         <div class="col-md-8">
-            <span class="badge bg-white text-brand fw-bold mb-2 px-3 py-1 rounded-pill">Ưu đãi hôm nay</span>
-            <h2 class="fw-bold mb-2">Kho Mã Giảm Giá Foodie 🎉</h2>
-            <p class="mb-0 opacity-90">Thu thập voucher giảm giá, freeship hấp dẫn để tiết kiệm tối đa cho mọi bữa ăn ngon của bạn!</p>
+            <span class="badge bg-warning text-dark fw-bold mb-2 px-3 py-1 rounded-pill">
+                <i class="fa-solid fa-bolt me-1"></i>Siêu Ưu Đãi Hôm Nay
+            </span>
+            <h2 class="fw-bold mb-2">Kho Mã Giảm Giá & Voucher Foodie 🎉</h2>
+            <p class="mb-0 opacity-90">Lưu mã Freeship, Voucher Toàn Sàn và Voucher độc quyền từ các Quán ngon để tự động áp dụng khi thanh toán!</p>
         </div>
-        <div class="col-md-4 text-center text-md-end mt-3 mt-md-0">
-            <i class="fa-solid fa-tags display-3 opacity-50"></i>
+        <div class="col-md-4 text-md-end">
+            @if (canManage)
+            {
+                <a asp-controller="Voucher" asp-action="Manage" class="btn btn-warning fw-bold rounded-pill px-4 py-2 shadow-sm">
+                    <i class="fa-solid fa-plus-circle me-1"></i> Quản lý & Tạo Voucher
+                </a>
+            }
+            else
+            {
+                <i class="fa-solid fa-tags display-3 opacity-50"></i>
+            }
         </div>
+    </div>
+</div>
+
+<!-- THANH LỌC LOẠI VOUCHER -->
+<div class="bg-white rounded-4 p-2 shadow-sm mb-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div class="nav nav-pills gap-1">
+        <a asp-action="Index" asp-route-filter="all" class="nav-link rounded-pill px-3 py-2 fw-semibold small @(currentFilter == "all" ? "bg-brand text-white" : "text-dark")">
+            <i class="fa-solid fa-layer-group me-1"></i>Tất cả (@Model.Count)
+        </a>
+        <a asp-action="Index" asp-route-filter="freeship" class="nav-link rounded-pill px-3 py-2 fw-semibold small @(currentFilter == "freeship" ? "bg-brand text-white" : "text-dark")">
+            <i class="fa-solid fa-truck-fast me-1 text-success"></i>Miễn phí vận chuyển
+        </a>
+        <a asp-action="Index" asp-route-filter="platform" class="nav-link rounded-pill px-3 py-2 fw-semibold small @(currentFilter == "platform" ? "bg-brand text-white" : "text-dark")">
+            <i class="fa-solid fa-crown me-1 text-warning"></i>Voucher Toàn Sàn
+        </a>
+        <a asp-action="Index" asp-route-filter="restaurant" class="nav-link rounded-pill px-3 py-2 fw-semibold small @(currentFilter == "restaurant" ? "bg-brand text-white" : "text-dark")">
+            <i class="fa-solid fa-store me-1 text-danger"></i>Voucher Quán Ăn
+        </a>
+    </div>
+    <div class="pe-2 small text-muted d-none d-md-block">
+        <i class="fa-solid fa-wallet text-brand me-1"></i>Đã lưu vào ví: <strong id="savedCountText">0</strong> mã
     </div>
 </div>
 
@@ -20,9 +55,9 @@
 {
     <div class="bg-white rounded-4 p-5 text-center shadow-sm">
         <i class="fa-solid fa-ticket text-muted fs-1 mb-3 opacity-50"></i>
-        <h5 class="fw-bold">Hiện chưa có mã giảm giá nào mới</h5>
-        <p class="text-muted small">Hãy quay lại sau để săn những deal hot nhất bạn nhé!</p>
-        <a asp-controller="Home" asp-action="Index" class="btn btn-brand btn-sm fw-bold">Khám phá món ngon</a>
+        <h5 class="fw-bold">Chưa có mã giảm giá nào trong danh mục này</h5>
+        <p class="text-muted small">Hãy chọn danh mục khác hoặc quay lại sau để săn deal hot bạn nhé!</p>
+        <a asp-action="Index" asp-route-filter="all" class="btn btn-brand btn-sm fw-bold rounded-pill px-4">Xem tất cả mã</a>
     </div>
 }
 else
@@ -30,57 +65,92 @@ else
     <div class="row row-cols-1 row-cols-md-2 g-4">
         @foreach (var v in Model)
         {
+            int usedCount = v.VoucherUsages?.Count ?? 0;
+            int limit = v.UsageLimit ?? 500;
+            int percentUsed = limit > 0 ? Math.Min(100, (int)Math.Round((double)usedCount * 100 / limit)) : 10;
+
             <div class="col">
                 <div class="bg-white rounded-4 shadow-sm p-4 h-100 d-flex flex-column justify-content-between position-relative border border-light-subtle overflow-hidden">
-                    <!-- Decor cut-out coupon effect -->
+                    <!-- Hiệu ứng vé coupon -->
                     <div style="position:absolute; left:-12px; top:50%; width:24px; height:24px; background:#f8f9fa; border-radius:50%; transform:translateY(-50%); border:1px solid #e9ecef;"></div>
                     <div style="position:absolute; right:-12px; top:50%; width:24px; height:24px; background:#f8f9fa; border-radius:50%; transform:translateY(-50%); border:1px solid #e9ecef;"></div>
 
                     <div>
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
-                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold px-2 py-1 rounded-pill">
-                                    @if (v.DiscountType == "percent" || v.DiscountType == "percentage")
-                                    {
-                                        <span>GIẢM @v.DiscountValue.ToString("0")%</span>
-                                    }
-                                    else
-                                    {
-                                        <span>GIẢM @v.DiscountValue.ToString("N0")đ</span>
-                                    }
-                                </span>
-                                @if (v.Restaurant != null)
+                            <div class="d-flex flex-wrap gap-1">
+                                @if (v.DiscountType == "free_shipping")
                                 {
-                                    <span class="badge bg-light text-dark border ms-1">@v.Restaurant.Name</span>
+                                    <span class="badge bg-success text-white fw-bold px-2 py-1 rounded-pill">
+                                        <i class="fa-solid fa-truck-fast me-1"></i>FREESHIP @v.DiscountValue.ToString("N0")đ
+                                    </span>
+                                }
+                                else if (v.DiscountType == "percent" || v.DiscountType == "percentage")
+                                {
+                                    <span class="badge bg-danger text-white fw-bold px-2 py-1 rounded-pill">
+                                        GIẢM @v.DiscountValue.ToString("0")%
+                                    </span>
                                 }
                                 else
                                 {
-                                    <span class="badge bg-warning-subtle text-dark border ms-1">Toàn sàn</span>
+                                    <span class="badge bg-danger text-white fw-bold px-2 py-1 rounded-pill">
+                                        GIẢM @v.DiscountValue.ToString("N0")đ
+                                    </span>
+                                }
+
+                                @if (v.Restaurant != null)
+                                {
+                                    <a asp-controller="Restaurant" asp-action="Details" asp-route-id="@v.RestaurantId" class="badge bg-primary-subtle text-primary border border-primary-subtle text-decoration-none">
+                                        <i class="fa-solid fa-store me-1"></i>@v.Restaurant.Name
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning-subtle text-dark border">Toàn sàn Foodie</span>
                                 }
                             </div>
                             <span class="text-muted small"><i class="fa-regular fa-clock me-1"></i>HSD: @v.EndDate.ToString("dd/MM/yyyy")</span>
                         </div>
 
-                        <h5 class="fw-bold text-dark mt-2 mb-1">Mã: <span class="text-brand">@v.Code</span></h5>
+                        <h5 class="fw-bold text-dark mt-2 mb-1">Mã: <span class="text-brand font-monospace">@v.Code</span></h5>
                         <p class="text-muted small mb-2">@v.Description</p>
-                        
+
                         <div class="small text-muted bg-light rounded-3 p-2 mb-3">
                             <div>• Đơn tối thiểu: <strong>@v.MinOrderAmount.ToString("N0")đ</strong></div>
                             @if (v.MaxDiscount.HasValue)
                             {
-                                <div>• Mức giảm tối đa: <strong>@v.MaxDiscount.Value.ToString("N0")đ</strong></div>
+                                <div>• Giảm tối đa: <strong>@v.MaxDiscount.Value.ToString("N0")đ</strong></div>
                             }
-                            <div>• Mỗi tài khoản được dùng tối đa <strong>@v.UsageLimitPerUser lần</strong></div>
+                            <div>• Giới hạn: <strong>@v.UsageLimitPerUser lượt / tài khoản</strong></div>
+                        </div>
+
+                        <!-- Thanh tiến độ số lượng voucher đã sử dụng -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between small mb-1" style="font-size:11px">
+                                <span class="text-danger fw-semibold"><i class="fa-solid fa-fire me-1"></i>Đã dùng @usedCount / @limit lượt (@percentUsed%)</span>
+                                <span class="text-muted">Còn @(Math.Max(0, limit - usedCount)) lượt</span>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-danger" role="progressbar" style="width: @(Math.Max(6, percentUsed))%"></div>
+                            </div>
                         </div>
                     </div>
 
                     <div class="d-flex gap-2 align-items-center">
                         <button type="button" class="btn btn-outline-brand flex-fill fw-bold copy-voucher-btn" data-code="@v.Code">
-                            <i class="fa-regular fa-copy me-1"></i> Sao chép mã
+                            <i class="fa-solid fa-bookmark me-1"></i> <span class="btn-label-text">Lưu & Sao chép</span>
                         </button>
-                        <a asp-controller="Home" asp-action="Index" class="btn btn-brand flex-fill fw-bold">
-                            Dùng ngay
-                        </a>
+                        @if (v.RestaurantId.HasValue)
+                        {
+                            <a asp-controller="Restaurant" asp-action="Details" asp-route-id="@v.RestaurantId" class="btn btn-brand flex-fill fw-bold">
+                                Vào quán dùng ngay
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-controller="Home" asp-action="Index" class="btn btn-brand flex-fill fw-bold">
+                                Đặt món dùng ngay
+                            </a>
+                        }
                     </div>
                 </div>
             </div>
@@ -88,12 +158,12 @@ else
     </div>
 }
 
-<!-- TOAST THÔNG BÁO COPY THÀNH CÔNG -->
+<!-- TOAST THÔNG BÁO LƯU MÃ -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
     <div id="copyToast" class="toast align-items-center text-white bg-dark border-0 rounded-3 shadow" role="alert">
         <div class="d-flex">
             <div class="toast-body">
-                <i class="fa-solid fa-circle-check text-success me-2"></i> Đã sao chép mã <strong id="copiedCodeText"></strong> vào khay nhớ tạm!
+                <i class="fa-solid fa-circle-check text-success me-2"></i> Đã lưu mã <strong id="copiedCodeText"></strong> vào ví Voucher & bộ nhớ tạm!
             </div>
             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
         </div>
@@ -102,16 +172,48 @@ else
 
 @section Scripts {
     <script>
+        function getSavedVouchers() {
+            try { return JSON.parse(localStorage.getItem('foodie_saved_vouchers') || '[]'); }
+            catch { return []; }
+        }
+
+        function refreshSavedUi() {
+            const saved = getSavedVouchers();
+            const countEl = document.getElementById('savedCountText');
+            if (countEl) countEl.textContent = saved.length;
+
+            document.querySelectorAll('.copy-voucher-btn').forEach(btn => {
+                const code = btn.getAttribute('data-code');
+                const label = btn.querySelector('.btn-label-text');
+                if (saved.includes(code)) {
+                    btn.classList.remove('btn-outline-brand');
+                    btn.classList.add('btn-success', 'text-white');
+                    if (label) label.textContent = 'Đã lưu mã (' + code + ')';
+                }
+            });
+        }
+
         document.querySelectorAll('.copy-voucher-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 const code = this.getAttribute('data-code');
-                navigator.clipboard.writeText(code).then(() => {
-                    document.getElementById('copiedCodeText').innerText = code;
-                    const toastEl = document.getElementById('copyToast');
-                    const toast = new bootstrap.Toast(toastEl, { delay: 2500 });
-                    toast.show();
-                });
+                const saved = getSavedVouchers();
+                if (!saved.includes(code)) {
+                    saved.push(code);
+                    localStorage.setItem('foodie_saved_vouchers', JSON.stringify(saved));
+                }
+                localStorage.setItem('foodie_selected_voucher', code);
+                refreshSavedUi();
+
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(code).catch(() => {});
+                }
+                document.getElementById('copiedCodeText').innerText = code;
+                const toastEl = document.getElementById('copyToast');
+                const toast = new bootstrap.Toast(toastEl, { delay: 2500 });
+                toast.show();
             });
         });
+
+        document.addEventListener('DOMContentLoaded', refreshSavedUi);
     </script>
 }
