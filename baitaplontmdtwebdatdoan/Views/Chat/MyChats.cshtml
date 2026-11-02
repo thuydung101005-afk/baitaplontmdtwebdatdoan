@@ -292,7 +292,7 @@
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: `restaurantId=${activeRestId}&customerId=${currentUserId}&message=${encodeURIComponent(text)}`
+                body: `restaurantId=${activeRestId}&customerId=${currentUserId}&mode=customer&message=${encodeURIComponent(text)}`
             })
             .then(r => r.json())
             .then(d => {

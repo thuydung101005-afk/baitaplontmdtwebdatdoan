@@ -165,6 +165,16 @@
         const pendingSupportOwn = [];
         let isHuman = false;
 
+        // Tài khoản đăng nhập đã đổi (ví dụ đăng nhập tài khoản khác ở tab khác) -> tải lại trang cho đúng tài khoản
+        function handleSessionChanged(d) {
+            if (d && d.sessionChanged) {
+                alert(d.message || "Tài khoản đăng nhập đã thay đổi. Trang sẽ được tải lại.");
+                location.reload();
+                return true;
+            }
+            return false;
+        }
+
         const supportHub = new signalR.HubConnectionBuilder()
             .withUrl("/chatHub")
             .withAutomaticReconnect()
@@ -179,6 +189,13 @@
                 if (idx !== -1) { pendingSupportOwn.splice(idx, 1); return; }
             }
             appendSupportBubble(role === 'customer', role, senderName, message, time);
+        });
+
+        // Sau khi tự kết nối lại, SignalR quên hết phòng: phải vào lại phòng CSKH
+        supportHub.onreconnected(function () {
+            if (currentCustomerId && currentCustomerId !== "0") {
+                supportHub.invoke("JoinSupportRoom", currentCustomerId).catch(() => {});
+            }
         });
 
         supportHub.start()
@@ -220,9 +237,10 @@
         }
 
         function loadSupportHistory() {
-            fetch('/Support/GetMessages', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            fetch(`/Support/GetMessages?mode=customer&customerId=${currentCustomerId}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(r => r.json())
                 .then(data => {
+                    if (handleSessionChanged(data)) return;
                     if (!data || !data.success) return;
                     supportBox.innerHTML = '';
                     updateModeUi(data.isHumanMode);
@@ -264,6 +282,7 @@
             }
             supportBox.appendChild(row);
             supportBox.scrollTop = supportBox.scrollHeight;
+            return row;
         }
 
         function sendSupportMsg(customText) {
@@ -273,7 +292,7 @@
 
             const timeNow = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
             pendingSupportOwn.push(text);
-            appendSupportBubble(true, 'customer', 'Bạn', text, timeNow);
+            const ownBubble = appendSupportBubble(true, 'customer', 'Bạn', text, timeNow);
 
             fetch('/Support/SendMessage', {
                 method: 'POST',
@@ -281,10 +300,17 @@
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: `message=${encodeURIComponent(text)}`
+                body: `customerId=${currentCustomerId}&mode=customer&message=${encodeURIComponent(text)}`
             })
             .then(r => r.json())
             .then(d => {
+                if (d && d.success === false) {
+                    const i = pendingSupportOwn.indexOf(text);
+                    if (i !== -1) pendingSupportOwn.splice(i, 1);
+                    if (ownBubble) ownBubble.remove();
+                    if (!handleSessionChanged(d)) alert(d.message || 'Không gửi được tin nhắn');
+                    return;
+                }
                 if (d && typeof d.isHumanMode === 'boolean') {
                     updateModeUi(d.isHumanMode);
                 }
@@ -301,10 +327,11 @@
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: `humanMode=${humanMode}`
+                body: `humanMode=${humanMode}&customerId=${currentCustomerId}&mode=customer`
             })
             .then(r => r.json())
             .then(d => {
+                if (handleSessionChanged(d)) return;
                 if (d && d.success) {
                     updateModeUi(d.isHumanMode);
                     if (d.isGuest && d.message) {

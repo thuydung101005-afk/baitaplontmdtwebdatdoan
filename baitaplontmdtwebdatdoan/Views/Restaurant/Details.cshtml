@@ -418,7 +418,7 @@ else
             fetch('/Chat/SendMessage', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `restaurantId=${restaurantId}&customerId=${currentUserId}&message=${encodeURIComponent(text)}`
+                body: `restaurantId=${restaurantId}&customerId=${currentUserId}&mode=customer&message=${encodeURIComponent(text)}`
             })
             .then(r => {
                 if (r.status === 401) {

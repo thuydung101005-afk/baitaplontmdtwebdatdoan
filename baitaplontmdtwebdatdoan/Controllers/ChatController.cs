@@ -97,7 +97,7 @@ namespace baitaplontmdtwebdatdoan.Controllers
 
         // POST /Chat/SendMessage
         [HttpPost]
-        public async Task<IActionResult> SendMessage(long restaurantId, long? customerId, string message)
+        public async Task<IActionResult> SendMessage(long restaurantId, long? customerId, string message, string? mode = null)
         {
             if (string.IsNullOrWhiteSpace(message))
             {
@@ -116,23 +116,43 @@ namespace baitaplontmdtwebdatdoan.Controllers
             string senderRole;
             long targetCustomerId;
 
-            if ((isOwner || isAdmin) && customerId.HasValue && customerId.Value > 0 && customerId.Value != restaurant.OwnerId)
+            if (mode == "customer")
             {
+                // Giao diện của khách: customerId phải đúng là người đang đăng nhập
+                if (customerId.HasValue && customerId.Value != CurrentUserId)
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        message = "Tài khoản đăng nhập đã thay đổi so với trang này. Vui lòng tải lại trang (F5) rồi gửi lại."
+                    });
+                }
+                if (isOwner)
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        message = "Bạn là chủ quán ăn này. Vui lòng vào mục 'Tin nhắn khách hàng' (Shop Inbox) để trả lời khách nhé!"
+                    });
+                }
+
+                senderRole = "customer";
+                targetCustomerId = CurrentUserId;
+            }
+            else if (mode == "restaurant")
+            {
+                // Giao diện của quán (ShopInbox): chỉ chủ quán hoặc admin
+                if (!(isOwner || isAdmin) || !customerId.HasValue || customerId.Value <= 0 || customerId.Value == restaurant.OwnerId)
+                {
+                    return Json(new { success = false, message = "Bạn không có quyền trả lời cuộc trò chuyện này." });
+                }
+
                 senderRole = "restaurant";
                 targetCustomerId = customerId.Value;
             }
-            else if (isOwner)
-            {
-                return Json(new
-                {
-                    success = false,
-                    message = "Bạn là chủ quán ăn này. Vui lòng vào mục 'Tin nhắn khách hàng' (Shop Inbox) để trả lời khách nhé!"
-                });
-            }
             else
             {
-                senderRole = "customer";
-                targetCustomerId = CurrentUserId;
+                return Json(new { success = false, message = "Yêu cầu không hợp lệ. Vui lòng tải lại trang." });
             }
 
             var senderUser = await _context.Users.FindAsync(CurrentUserId);

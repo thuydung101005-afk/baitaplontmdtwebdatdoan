@@ -133,9 +133,16 @@ namespace baitaplontmdtwebdatdoan.Controllers
         // GET /Support/GetMessages?customerId=5
         [AllowAnonymous]
         [HttpGet]
-        public async Task<IActionResult> GetMessages(long? customerId = null)
+        public async Task<IActionResult> GetMessages(long? customerId = null, string? mode = null)
         {
             var uid = CurrentUserIdOrNull;
+
+            // Trang CSKH của khách: customerId của trang phải trùng với tài khoản đang đăng nhập
+            if (mode == "customer" && (customerId ?? 0) != (uid ?? 0))
+            {
+                return Json(new { success = false, sessionChanged = true, message = "Tài khoản đăng nhập đã thay đổi so với trang này. Vui lòng tải lại trang (F5) rồi thử lại." });
+            }
+
             if (!uid.HasValue)
             {
                 // Khách chưa đăng nhập: trả về lời chào mặc định của Trợ lý AI Foodie
@@ -172,7 +179,7 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 .ToListAsync();
 
             // Nếu chưa có tin nhắn nào và khách hàng mở lần đầu, tạo lời chào từ AI CSKH
-            if (!messages.Any() && !isAdmin)
+            if (!messages.Any() && targetCustomerId == uid.Value)
             {
                 var welcome = new SupportMessage
                 {
@@ -191,7 +198,8 @@ namespace baitaplontmdtwebdatdoan.Controllers
             }
 
             // Đánh dấu đã đọc
-            var viewerIsCustomer = targetCustomerId == uid.Value && !isAdmin;
+            // Đang xem hội thoại của chính mình (kể cả admin dùng trang khách) thì là phía khách
+            var viewerIsCustomer = targetCustomerId == uid.Value;
             var unread = messages.Where(m => !m.IsRead && (viewerIsCustomer ? m.SenderRole != "customer" : m.SenderRole == "customer")).ToList();
             if (unread.Any())
             {
@@ -209,7 +217,7 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 message = m.Message,
                 isHumanMode = m.IsHumanMode,
                 time = FormatTime(m.CreatedAt),
-                isMe = viewerIsCustomer ? (m.SenderRole == "customer") : (m.SenderRole == "agent")
+                isMe = viewerIsCustomer ? (m.SenderRole == "customer") : (m.SenderRole == "agent" && m.SenderId == uid.Value)
             });
 
             return Json(new
@@ -224,9 +232,15 @@ namespace baitaplontmdtwebdatdoan.Controllers
         // POST /Support/SwitchMode - Chuyển đổi giữa Trợ lý AI và Nhân viên CSKH người thật
         [AllowAnonymous]
         [HttpPost]
-        public async Task<IActionResult> SwitchMode(bool humanMode, long? customerId = null)
+        public async Task<IActionResult> SwitchMode(bool humanMode, long? customerId = null, string? mode = null)
         {
             var uid = CurrentUserIdOrNull;
+
+            if (mode == "customer" && (customerId ?? 0) != (uid ?? 0))
+            {
+                return Json(new { success = false, sessionChanged = true, message = "Tài khoản đăng nhập đã thay đổi so với trang này. Vui lòng tải lại trang (F5) rồi thử lại." });
+            }
+
             if (!uid.HasValue)
             {
                 var guestNotice = humanMode
@@ -293,13 +307,19 @@ namespace baitaplontmdtwebdatdoan.Controllers
         // POST /Support/SendMessage - Khách hàng gửi tin nhắn CSKH
         [AllowAnonymous]
         [HttpPost]
-        public async Task<IActionResult> SendMessage(string message, bool? forceHumanMode = null)
+        public async Task<IActionResult> SendMessage(string message, bool? forceHumanMode = null, long? customerId = null, string? mode = null)
         {
             if (string.IsNullOrWhiteSpace(message))
                 return Json(new { success = false, message = "Vui lòng nhập nội dung tin nhắn." });
 
             var text = message.Trim();
             var uidOrNull = CurrentUserIdOrNull;
+
+            // Trang CSKH của khách: customerId của trang phải trùng với tài khoản đang đăng nhập
+            if (mode == "customer" && (customerId ?? 0) != (uidOrNull ?? 0))
+            {
+                return Json(new { success = false, sessionChanged = true, message = "Tài khoản đăng nhập đã thay đổi so với trang này. Vui lòng tải lại trang (F5) rồi thử lại." });
+            }
 
             // Nếu khách chưa đăng nhập -> Trợ lý AI vẫn trả lời trực tiếp ngay lập tức
             if (!uidOrNull.HasValue)

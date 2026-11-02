@@ -147,6 +147,12 @@
         let activeCustId = null;
         const pendingAgentOwn = [];
 
+        // Chỉ tin do chuyên viên gõ (AdminReply đặt tên 'CSKH - ...') mới là 'tin của tôi';
+        // thông báo hệ thống cũng mang vai 'agent' nhưng KHÔNG phải tin do admin gõ.
+        function isOwnAgentMessage(role, senderName) {
+            return role === 'agent' && (senderName || '').startsWith('CSKH - ');
+        }
+
         const hub = new signalR.HubConnectionBuilder()
             .withUrl("/chatHub")
             .withAutomaticReconnect()
@@ -157,7 +163,7 @@
                 const idx = pendingAgentOwn.indexOf(message);
                 if (idx !== -1) { pendingAgentOwn.splice(idx, 1); return; }
             }
-            appendAdminBubble(role === 'agent', role, senderName, message, time);
+            appendAdminBubble(isOwnAgentMessage(role, senderName), role, senderName, message, time);
         });
 
         hub.on("SupportInboxUpdated", function(data) {
@@ -214,8 +220,16 @@
             }
         });
 
+        // Sau khi tự kết nối lại, SignalR quên hết phòng: vào lại hộp thư và phòng đang mở
+        hub.onreconnected(function () {
+            hub.invoke("JoinAdminSupportInbox").catch(() => {});
+            if (activeCustId) hub.invoke("JoinSupportRoom", activeCustId.toString()).catch(() => {});
+        });
+
         hub.start()
             .then(() => hub.invoke("JoinAdminSupportInbox"))
+            // Cuộc trò chuyện có thể đã được tự chọn trước khi kết nối xong -> vào phòng ngay bây giờ
+            .then(() => { if (activeCustId) return hub.invoke("JoinSupportRoom", activeCustId.toString()); })
             .catch(err => console.error(err));
 
         async function loadCustomerSupport(custId, custName) {
@@ -243,7 +257,7 @@
                     box.innerHTML = '';
                     if (d.messages && d.messages.length > 0) {
                         d.messages.forEach(m => {
-                            appendAdminBubble(m.senderRole === 'agent', m.senderRole, m.senderName, m.message, m.time);
+                            appendAdminBubble(isOwnAgentMessage(m.senderRole, m.senderName), m.senderRole, m.senderName, m.message, m.time);
                         });
                     }
                     box.scrollTop = box.scrollHeight;
@@ -265,10 +279,12 @@
                     </div>
                 `;
             } else {
-                const avatarBg = role === 'ai' ? '2563eb' : '14402E';
+                const avatarBg = role === 'ai' ? '2563eb' : (role === 'agent' ? '6b7280' : '14402E');
                 const badge = role === 'ai'
                     ? '<span class="badge bg-primary-subtle text-primary ms-1" style="font-size:9px">AI trả lời</span>'
-                    : '<span class="badge bg-success-subtle text-success ms-1" style="font-size:9px">Khách hàng</span>';
+                    : (role === 'agent'
+                        ? '<span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size:9px">Hệ thống</span>'
+                        : '<span class="badge bg-success-subtle text-success ms-1" style="font-size:9px">Khách hàng</span>');
                 row.innerHTML = `
                     <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(senderName || 'KH')}&background=${avatarBg}&color=fff"
                          class="fd-msg-avatar" alt="avatar" />
