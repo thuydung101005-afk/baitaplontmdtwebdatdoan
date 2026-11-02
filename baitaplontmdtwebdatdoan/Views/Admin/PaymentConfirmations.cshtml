@@ -1,0 +1,110 @@
+@model List<baitaplontmdtwebdatdoan.Models.Payment>
+@{
+    ViewData["Title"] = "Xác nhận đã nhận tiền (Admin)";
+
+    string GetPaymentName(string? method) => method switch
+    {
+        "bank_transfer" => "VietQR / Chuyển khoản",
+        "credit_card" => "Thẻ Visa/Master",
+        "momo" => "Ví MoMo",
+        "zalopay" => "Ví ZaloPay",
+        _ => method ?? ""
+    };
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="fa-solid fa-money-check-dollar text-success me-2"></i>XÁC NHẬN ĐÃ NHẬN TIỀN (ĐỐI SOÁT)</h4>
+        <p class="text-muted small mb-0">
+            Mở sao kê tài khoản ngân hàng nhận tiền, tìm giao dịch có nội dung trùng <strong>mã đơn</strong>, rồi nhập đúng số tiền thực nhận để xác nhận.
+            Đơn chỉ được quán xử lý sau khi bạn xác nhận.
+        </p>
+    </div>
+    <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold">
+        <i class="fa-solid fa-arrow-left me-1"></i> Về trang Admin
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success rounded-4 shadow-sm">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger rounded-4 shadow-sm">@TempData["Error"]</div>
+}
+
+@if (!Model.Any())
+{
+    <div class="bg-white rounded-4 shadow-sm p-5 text-center text-muted">
+        <i class="fa-solid fa-circle-check fs-1 text-success mb-3"></i>
+        <div class="fw-semibold">Không có giao dịch nào đang chờ xác nhận.</div>
+    </div>
+}
+else
+{
+    <div class="bg-white rounded-4 shadow-sm p-3">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Mã đơn (nội dung CK)</th>
+                        <th>Khách hàng</th>
+                        <th>Nhà hàng</th>
+                        <th>Phương thức</th>
+                        <th class="text-end">Số tiền cần nhận</th>
+                        <th>Tình trạng</th>
+                        <th style="min-width:340px">Xử lý</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var p in Model)
+                {
+                    var o = p.Order;
+                    <tr>
+                        <td>
+                            <a asp-controller="Order" asp-action="Details" asp-route-id="@o.Id" class="fw-bold font-monospace text-decoration-none">@o.OrderCode</a>
+                            <div class="text-muted small">@o.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                        </td>
+                        <td>@(o.User?.FullName ?? o.User?.Email ?? ("#" + o.UserId))</td>
+                        <td>@(o.Restaurant?.Name)</td>
+                        <td>@GetPaymentName(p.Provider)</td>
+                        <td class="text-end fw-bold text-danger">@p.Amount.ToString("N0")đ</td>
+                        <td>
+                            @if (p.Status == "awaiting_admin")
+                            {
+                                <span class="badge bg-warning text-dark rounded-pill px-3">Khách báo đã chuyển</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary rounded-pill px-3">Khách chưa báo</span>
+                            }
+                        </td>
+                        <td>
+                            <form asp-controller="Admin" asp-action="ConfirmPaymentReceived" method="post" class="d-flex gap-2 mb-2">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="paymentId" value="@p.Id" />
+                                <input type="number" name="receivedAmount" class="form-control form-control-sm"
+                                       placeholder="Số tiền thực nhận" min="0" step="1" required style="max-width:170px" />
+                                <button type="submit" class="btn btn-success btn-sm fw-bold text-nowrap"
+                                        onclick="return confirm('Xác nhận đã nhận đúng số tiền cho đơn @o.OrderCode?');">
+                                    <i class="fa-solid fa-check me-1"></i>Đã nhận tiền
+                                </button>
+                            </form>
+                            <form asp-controller="Admin" asp-action="RejectPayment" method="post" class="d-flex gap-2">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="paymentId" value="@p.Id" />
+                                <input type="text" name="reason" class="form-control form-control-sm"
+                                       placeholder="Lý do (vd: chưa thấy tiền về)" maxlength="200" style="max-width:170px" />
+                                <button type="submit" class="btn btn-outline-danger btn-sm fw-semibold text-nowrap">
+                                    <i class="fa-solid fa-xmark me-1"></i>Chưa nhận được
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

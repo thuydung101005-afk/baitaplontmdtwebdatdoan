@@ -456,14 +456,27 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 return RedirectToAction("Details", new { id });
             }
 
-            order.PaymentStatus = "paid";
-            order.UpdatedAt = DateTime.UtcNow;
+            if (order.OrderStatus == "cancelled")
+            {
+                TempData["Error"] = "Đơn hàng đã bị huỷ, không thể xác nhận thanh toán.";
+                return RedirectToAction("Details", new { id });
+            }
 
             var pay = order.Payments.OrderByDescending(p => p.CreatedAt).FirstOrDefault();
+            if (pay != null && pay.Status == "awaiting_admin")
+            {
+                TempData["Error"] = "Bạn đã báo chuyển khoản rồi, vui lòng chờ Foodie đối soát và xác nhận đã nhận tiền.";
+                return RedirectToAction("Details", new { id });
+            }
+
+            // Khách chỉ BÁO đã chuyển. Tiền chỉ được coi là đã thu khi Admin đối soát và xác nhận (AdminController.ConfirmPaymentReceived).
+            // Order.PaymentStatus giữ nguyên "unpaid" cho đến lúc đó.
+            order.UpdatedAt = DateTime.UtcNow;
+
             if (pay != null)
             {
-                pay.Status = "escrow_held";
-                pay.RawResponse = "{\"escrow\":\"HELD_BY_PLATFORM\",\"confirmedBy\":\"CustomerVietQR\"}";
+                pay.Status = "awaiting_admin";
+                pay.RawResponse = "{\"state\":\"CUSTOMER_CLAIMED_TRANSFER\",\"claimedAtUtc\":\"" + DateTime.UtcNow.ToString("o") + "\"}";
             }
 
             _context.OrderStatusHistories.Add(new OrderStatusHistory
@@ -471,14 +484,14 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 OrderId = order.Id,
                 Status = order.OrderStatus,
                 ChangedAt = DateTime.UtcNow,
-                Note = "Khách hàng xác nhận đã chuyển khoản qua VietQR (Cổng trung gian Foodie Escrow đang tạm giữ tiền)"
+                Note = "Khách hàng báo đã chuyển khoản qua VietQR. Đang chờ Foodie đối soát và xác nhận đã nhận tiền."
             });
 
             await _context.SaveChangesAsync();
 
-            await _hub.Clients.Group($"order-{id}").SendAsync("PaymentUpdated", "paid");
+            await _hub.Clients.Group($"order-{id}").SendAsync("PaymentUpdated", "awaiting_admin");
 
-            TempData["SuccessMessage"] = "Xác nhận thanh toán thành công! Tiền được bảo vệ bởi Trung gian Thanh toán Foodie Escrow.";
+            TempData["SuccessMessage"] = "Đã ghi nhận thông tin chuyển khoản. Foodie sẽ đối soát và xác nhận khi tiền về tài khoản.";
             return RedirectToAction("Details", new { id });
         }
 
@@ -704,6 +717,15 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 .Include(o => o.Payments)
                 .FirstOrDefaultAsync(o => o.Id == id);
             if (order == null) return NotFound();
+
+            // Đơn thanh toán online chưa được Admin xác nhận đã nhận tiền thì chưa được xử lý tiếp (chỉ cho phép huỷ).
+            var onlineMethods = new[] { "bank_transfer", "momo", "zalopay", "credit_card" };
+            if (onlineMethods.Contains(order.PaymentMethod) && order.PaymentStatus != "paid"
+                && newStatus != "pending" && newStatus != "cancelled")
+            {
+                TempData["Error"] = "Đơn này thanh toán online nhưng Foodie chưa xác nhận đã nhận tiền, chưa thể xử lý tiếp.";
+                return RedirectToAction("Manage");
+            }
 
             order.OrderStatus = newStatus;
             order.UpdatedAt = DateTime.UtcNow;

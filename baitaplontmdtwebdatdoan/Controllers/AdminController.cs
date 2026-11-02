@@ -1,7 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using System.Text.Json;
 using baitaplontmdtwebdatdoan.Data;
+using baitaplontmdtwebdatdoan.Hubs;
 using baitaplontmdtwebdatdoan.Models;
 
 namespace baitaplontmdtwebdatdoan.Controllers
@@ -10,11 +14,15 @@ namespace baitaplontmdtwebdatdoan.Controllers
     public class AdminController : Controller
     {
         private readonly FoodieDbContext _context;
+        private readonly IHubContext<OrderHub> _orderHub;
 
-        public AdminController(FoodieDbContext context)
+        public AdminController(FoodieDbContext context, IHubContext<OrderHub> orderHub)
         {
             _context = context;
+            _orderHub = orderHub;
         }
+
+        private string CurrentAdminId => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown";
 
         // GET /Admin - Tổng quan hệ thống & Duyệt nhà hàng
         public async Task<IActionResult> Index()
@@ -50,6 +58,8 @@ namespace baitaplontmdtwebdatdoan.Controllers
             ViewBag.EscrowHolding = escrowHolding;
             ViewBag.ActiveVoucherCount = activeVoucherCount;
             ViewBag.UnreadSupportCount = unreadSupportCount;
+            ViewBag.AwaitingPaymentCount = await _context.Payments
+                .CountAsync(p => p.Status == "awaiting_admin" && p.Order.PaymentStatus == "unpaid" && p.Order.OrderStatus != "cancelled");
 
             return View();
         }
@@ -268,6 +278,137 @@ namespace baitaplontmdtwebdatdoan.Controllers
 
             TempData["SuccessMessage"] = $"Đã từ chối nhà hàng \"{restaurant.Name}\".";
             return RedirectToAction("Index");
+        }
+
+        // ===== ĐỐI SOÁT & XÁC NHẬN ĐÃ NHẬN TIỀN (thanh toán online) =====
+
+        private static readonly string[] OnlineMethods = { "bank_transfer", "momo", "zalopay", "credit_card" };
+
+        // GET /Admin/PaymentConfirmations - Danh sách giao dịch online chờ Admin xác nhận đã nhận tiền
+        public async Task<IActionResult> PaymentConfirmations()
+        {
+            var payments = await _context.Payments
+                .Include(p => p.Order).ThenInclude(o => o.Restaurant)
+                .Include(p => p.Order).ThenInclude(o => o.User)
+                .Where(p => (p.Status == "awaiting_admin" || p.Status == "pending")
+                            && p.Order.PaymentStatus == "unpaid"
+                            && p.Order.OrderStatus != "cancelled"
+                            && p.Provider != null && OnlineMethods.Contains(p.Provider))
+                .ToListAsync();
+
+            // Mỗi đơn chỉ hiện giao dịch mới nhất; khách đã báo chuyển (awaiting_admin) lên trước.
+            var rows = payments
+                .GroupBy(p => p.OrderId)
+                .Select(g => g.OrderByDescending(p => p.CreatedAt).First())
+                .OrderByDescending(p => p.Status == "awaiting_admin")
+                .ThenBy(p => p.CreatedAt)
+                .ToList();
+
+            return View(rows);
+        }
+
+        // POST /Admin/ConfirmPaymentReceived/10 - Admin đã đối soát sao kê và xác nhận TIỀN ĐÃ VỀ
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ConfirmPaymentReceived(long paymentId, decimal? receivedAmount)
+        {
+            var payment = await _context.Payments
+                .Include(p => p.Order)
+                .FirstOrDefaultAsync(p => p.Id == paymentId);
+            if (payment == null || payment.Order == null) return NotFound();
+
+            var order = payment.Order;
+
+            if (order.PaymentStatus == "paid")
+            {
+                TempData["Error"] = $"Đơn {order.OrderCode} đã được xác nhận thanh toán trước đó.";
+                return RedirectToAction("PaymentConfirmations");
+            }
+
+            if (order.OrderStatus == "cancelled")
+            {
+                TempData["Error"] = $"Đơn {order.OrderCode} đã bị huỷ, không thể xác nhận thanh toán.";
+                return RedirectToAction("PaymentConfirmations");
+            }
+
+            // Bắt buộc nhập đúng số tiền thực nhận trên sao kê để tránh bấm nhầm / thiếu tiền.
+            if (!receivedAmount.HasValue || receivedAmount.Value != payment.Amount)
+            {
+                TempData["Error"] = $"Số tiền thực nhận phải đúng bằng {payment.Amount:N0}đ của đơn {order.OrderCode}. Nếu khách chuyển thiếu/thừa, hãy từ chối và xử lý riêng.";
+                return RedirectToAction("PaymentConfirmations");
+            }
+
+            var now = DateTime.UtcNow;
+            payment.Status = "escrow_held";
+            payment.RawResponse = JsonSerializer.Serialize(new
+            {
+                escrowState = "HELD_BY_PLATFORM",
+                receivedConfirmedBy = "admin:" + CurrentAdminId,
+                receivedAmount = receivedAmount.Value,
+                receivedConfirmedAtUtc = now
+            });
+
+            order.PaymentStatus = "paid";
+            order.UpdatedAt = now;
+
+            _context.OrderStatusHistories.Add(new OrderStatusHistory
+            {
+                OrderId = order.Id,
+                Status = order.OrderStatus,
+                ChangedAt = now,
+                Note = $"Foodie đã đối soát và xác nhận NHẬN ĐƯỢC {receivedAmount.Value:N0}đ (Mã GD: {payment.TransactionId}). Tiền đang được Sàn tạm giữ (Escrow) và sẽ giải ngân cho quán khi giao hàng hoàn tất."
+            });
+
+            await _context.SaveChangesAsync();
+            await _orderHub.Clients.Group($"order-{order.Id}").SendAsync("PaymentUpdated", "paid");
+
+            TempData["SuccessMessage"] = $"Đã xác nhận nhận {receivedAmount.Value:N0}đ cho đơn {order.OrderCode}. Quán có thể xử lý đơn.";
+            return RedirectToAction("PaymentConfirmations");
+        }
+
+        // POST /Admin/RejectPayment/10 - Admin KHÔNG thấy tiền về
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RejectPayment(long paymentId, string? reason)
+        {
+            var payment = await _context.Payments
+                .Include(p => p.Order)
+                .FirstOrDefaultAsync(p => p.Id == paymentId);
+            if (payment == null || payment.Order == null) return NotFound();
+
+            var order = payment.Order;
+
+            if (order.PaymentStatus == "paid")
+            {
+                TempData["Error"] = $"Đơn {order.OrderCode} đã được xác nhận thanh toán, không thể từ chối.";
+                return RedirectToAction("PaymentConfirmations");
+            }
+
+            var note = string.IsNullOrWhiteSpace(reason) ? "Chưa nhận được tiền trong tài khoản" : reason.Trim();
+
+            payment.Status = "pending";
+            payment.RawResponse = JsonSerializer.Serialize(new
+            {
+                state = "ADMIN_NOT_RECEIVED",
+                rejectedBy = "admin:" + CurrentAdminId,
+                reason = note,
+                rejectedAtUtc = DateTime.UtcNow
+            });
+            order.UpdatedAt = DateTime.UtcNow;
+
+            _context.OrderStatusHistories.Add(new OrderStatusHistory
+            {
+                OrderId = order.Id,
+                Status = order.OrderStatus,
+                ChangedAt = DateTime.UtcNow,
+                Note = "Foodie chưa nhận được tiền: " + note + ". Khách vui lòng kiểm tra lại giao dịch và báo lại."
+            });
+
+            await _context.SaveChangesAsync();
+            await _orderHub.Clients.Group($"order-{order.Id}").SendAsync("PaymentUpdated", "unpaid");
+
+            TempData["SuccessMessage"] = $"Đã ghi nhận chưa nhận được tiền cho đơn {order.OrderCode}. Khách sẽ được báo để chuyển/báo lại.";
+            return RedirectToAction("PaymentConfirmations");
         }
     }
 }

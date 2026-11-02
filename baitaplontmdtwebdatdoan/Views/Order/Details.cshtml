@@ -252,7 +252,19 @@ else
 }
 
 <!-- 3. KHỐI CHUYỂN KHOẢN VIETQR (NẾU CHỌN CHUYỂN KHOẢN VÀ CHƯA THANH TOÁN) -->
-@if (Model.PaymentMethod == "bank_transfer" && Model.PaymentStatus == "unpaid" && Model.OrderStatus != "cancelled")
+@{
+    var awaitingAdmin = Model.Payments.Any(p => p.Status == "awaiting_admin");
+}
+@if (awaitingAdmin && Model.PaymentStatus == "unpaid" && Model.OrderStatus != "cancelled")
+{
+    <div class="alert alert-warning rounded-4 shadow-sm mb-4">
+        <i class="fa-solid fa-hourglass-half me-2"></i>
+        <strong>Đang chờ Foodie xác nhận đã nhận tiền.</strong>
+        Bạn đã báo thanh toán <strong>@Model.TotalAmount.ToString("N0")đ</strong> cho đơn <strong>@Model.OrderCode</strong>.
+        Quán sẽ xử lý đơn ngay khi Foodie đối soát và xác nhận tiền đã về tài khoản.
+    </div>
+}
+else if (Model.PaymentMethod == "bank_transfer" && Model.PaymentStatus == "unpaid" && Model.OrderStatus != "cancelled")
 {
     <div class="bg-white rounded-4 shadow-sm p-4 mb-4 border border-primary-subtle">
         <div class="row align-items-center g-4">
@@ -306,7 +318,7 @@ else
                     </button>
                 </form>
                 <div class="text-muted small mt-2">
-                    <i class="fa-solid fa-info-circle me-1"></i> Sau khi chuyển khoản, bạn bấm nút xác nhận trên để đơn hàng được nhà hàng tiếp nhận nhanh chóng nhé.
+                    <i class="fa-solid fa-info-circle me-1"></i> Sau khi chuyển khoản, bạn bấm nút trên để báo cho Foodie. Đơn sẽ được nhà hàng xử lý khi Foodie đối soát và xác nhận đã nhận tiền.
                 </div>
             </div>
         </div>

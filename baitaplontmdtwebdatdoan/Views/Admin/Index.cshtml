@@ -7,6 +7,7 @@
     var escrowHolding = (decimal)(ViewBag.EscrowHolding ?? 0m);
     var activeVoucherCount = (int)(ViewBag.ActiveVoucherCount ?? 0);
     var unreadSupportCount = (int)(ViewBag.UnreadSupportCount ?? 0);
+    var awaitingPaymentCount = (int)(ViewBag.AwaitingPaymentCount ?? 0);
 
     string GetStatusLabel(string status) => status switch
     {
@@ -33,6 +34,13 @@
         <p class="text-muted small mb-0">Quản lý đối tác nhà hàng, doanh thu hoa hồng sàn, trung gian thanh toán, khuyến mãi và CSKH</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
+        <a asp-controller="Admin" asp-action="PaymentConfirmations" class="btn btn-warning btn-sm rounded-pill px-3 fw-bold shadow-xs">
+            <i class="fa-solid fa-money-check-dollar me-1"></i> Xác nhận đã nhận tiền
+            @if (awaitingPaymentCount > 0)
+            {
+                <span class="badge bg-white text-danger rounded-pill ms-1">@awaitingPaymentCount</span>
+            }
+        </a>
         <a asp-controller="Admin" asp-action="Revenue" class="btn btn-success btn-sm rounded-pill px-3 fw-bold shadow-xs">
             <i class="fa-solid fa-chart-line me-1"></i> Báo cáo Doanh thu Sàn
         </a>

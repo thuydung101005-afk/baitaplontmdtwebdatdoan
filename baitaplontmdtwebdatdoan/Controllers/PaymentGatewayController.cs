@@ -92,6 +92,12 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 return RedirectToAction("Details", "Order", new { id = payment.OrderId });
             }
 
+            if (payment.Status == "awaiting_admin")
+            {
+                TempData["SuccessMessage"] = "Giao dịch đang chờ Foodie đối soát và xác nhận đã nhận tiền.";
+                return RedirectToAction("Details", "Order", new { id = payment.OrderId });
+            }
+
             ViewBag.Bank = _bank;
             ViewBag.QrUrl = _bank.IsConfigured
                 ? _bank.BuildQrUrl(payment.Amount, payment.Order.OrderCode)
@@ -138,27 +144,37 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 return RedirectToAction("Details", "Order", new { id = order.Id });
             }
 
-            // Xác nhận thanh toán thành công -> Tiền vào Tài khoản Trung gian Sàn (Escrow Held)
+            if (order.PaymentStatus == "paid")
+            {
+                TempData["SuccessMessage"] = "Đơn hàng này đã được xác nhận thanh toán.";
+                return RedirectToAction("Details", "Order", new { id = order.Id });
+            }
+
+            if (payment.Status == "awaiting_admin")
+            {
+                TempData["Error"] = "Giao dịch đang chờ Foodie đối soát và xác nhận đã nhận tiền.";
+                return RedirectToAction("Details", "Order", new { id = order.Id });
+            }
+
+            // Khách chỉ BÁO đã thanh toán -> chờ Admin đối soát. Tiền chỉ vào Escrow (escrow_held) khi Admin xác nhận
+            // (AdminController.ConfirmPaymentReceived). Order.PaymentStatus giữ "unpaid" cho tới lúc đó.
             var maskedCard = !string.IsNullOrWhiteSpace(cardNumber) && cardNumber.Length >= 4
                 ? "**** **** **** " + cardNumber.Trim().Substring(cardNumber.Trim().Length - 4)
                 : "Verified Digital Account";
 
-            payment.Status = "escrow_held";
+            payment.Status = "awaiting_admin";
             payment.RawResponse = JsonSerializer.Serialize(new
             {
                 gateway = "FoodiePay Intermediary Escrow v2.0",
+                state = "CUSTOMER_CLAIMED_PAYMENT",
                 transactionId = payment.TransactionId,
                 provider = payment.Provider,
                 amount = payment.Amount,
                 payerAccount = maskedCard,
                 cardHolder = cardHolder ?? User.Identity?.Name,
-                escrowState = "HELD_BY_PLATFORM",
-                commissionRate = "18%",
-                gatewayFeeRate = "1.5%",
-                paidAtUtc = DateTime.UtcNow
+                claimedAtUtc = DateTime.UtcNow
             });
 
-            order.PaymentStatus = "paid";
             order.UpdatedAt = DateTime.UtcNow;
 
             _context.OrderStatusHistories.Add(new OrderStatusHistory
@@ -166,14 +182,14 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 OrderId = order.Id,
                 Status = order.OrderStatus,
                 ChangedAt = DateTime.UtcNow,
-                Note = $"Cổng Trung Gian Thanh Toán FoodiePay xác nhận đã thu {payment.Amount:N0}đ (Mã GD: {payment.TransactionId}). Tiền đang được Sàn tạm giữ (Escrow) và sẽ giải ngân cho quán khi giao hàng hoàn tất."
+                Note = $"Khách hàng báo đã thanh toán {payment.Amount:N0}đ qua {payment.Provider} (Mã GD: {payment.TransactionId}). Đang chờ Foodie đối soát và xác nhận đã nhận tiền."
             });
 
             await _context.SaveChangesAsync();
 
-            await _orderHub.Clients.Group($"order-{order.Id}").SendAsync("PaymentUpdated", "paid");
+            await _orderHub.Clients.Group($"order-{order.Id}").SendAsync("PaymentUpdated", "awaiting_admin");
 
-            TempData["SuccessMessage"] = $"Thanh toán thành công {payment.Amount:N0}đ qua Cổng trung gian FoodiePay (Mã GD: {payment.TransactionId}). Khoản tiền của bạn được bảo vệ bởi cơ chế Giữ tiền Trung gian (Escrow)!";
+            TempData["SuccessMessage"] = $"Đã ghi nhận thanh toán {payment.Amount:N0}đ (Mã GD: {payment.TransactionId}). Foodie sẽ đối soát và xác nhận khi tiền về tài khoản.";
             return RedirectToAction("Details", "Order", new { id = order.Id });
         }
     }

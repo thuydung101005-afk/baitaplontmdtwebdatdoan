@@ -262,6 +262,15 @@ namespace baitaplontmdtwebdatdoan.Controllers
                 .FirstOrDefaultAsync(o => o.Id == id && o.RestaurantId == restaurant.Id);
             if (order == null) return NotFound();
 
+            // Đơn thanh toán online chưa được Admin xác nhận đã nhận tiền thì chưa được xử lý tiếp (chỉ cho phép huỷ).
+            var onlineMethods = new[] { "bank_transfer", "momo", "zalopay", "credit_card" };
+            if (onlineMethods.Contains(order.PaymentMethod) && order.PaymentStatus != "paid"
+                && newStatus != "pending" && newStatus != "cancelled")
+            {
+                TempData["Error"] = "Đơn này thanh toán online nhưng Foodie chưa xác nhận đã nhận tiền, chưa thể xử lý tiếp.";
+                return RedirectToAction("Orders");
+            }
+
             order.OrderStatus = newStatus;
             order.UpdatedAt = DateTime.UtcNow;
 
